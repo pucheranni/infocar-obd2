@@ -1,0 +1,11 @@
+{
+  "name": "autopulse-obd2",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AutoPulse OBD2 - PWA de telemetria e diagnóstico ELM327",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "python server.py"
+  }
+}

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>AutoPulse OBD2 - Scanner & Telemetria</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div>
+          <span class="brand-title">AutoPulse</span>
+          <span class="brand-badge">OBD2</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- MIL Check Engine Light -->
+        <div id="mil-indicator" class="mil-badge" title="Luz de Injeção Eletrônica Ativa (Falha na ECU)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 10v4h2v3h4v2h4v-2h4v-3h2v-4h-2V7h-4V5h-4v2H6v3H4zm4-1h8v6H8V9z"/>
+          </svg>
+          <span>CHECK ENGINE</span>
+        </div>
+
+        <!-- HUD Quick Trigger -->
+        <button id="btn-toggle-hud" class="hud-btn" title="Modo Projeção no Para-brisa (HUD)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>HUD</span>
+        </button>
+
+        <!-- Connection Status Pill -->
+        <div id="connection-pill" class="connection-pill" title="Clique para gerenciar a conexão">
+          <span id="status-indicator" class="status-dot"></span>
+          <span id="status-text">Desconectado</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Tabs -->
+    <main class="main-content">
+      
+      <!-- TAB 1: PAINEL / COCKPIT -->
+      <section id="view-dashboard" class="view-section active">
+        <div class="dashboard-grid">
+          <!-- Primary Circular Gauges -->
+          <div class="gauges-row">
+            <!-- Speedometer -->
+            <div class="gauge-card">
+              <div class="gauge-svg-container">
+                <svg class="gauge-svg" viewBox="0 0 160 160">
+                  <circle class="gauge-bg-circle" cx="80" cy="80" r="70" />
+                  <circle id="speed-progress" class="gauge-progress-circle" cx="80" cy="80" r="70" />
+                </svg>
+                <div class="gauge-center-text">
+                  <span id="val-speed" class="gauge-value">0</span>
+                  <span class="gauge-unit" id="unit-speed">km/h</span>
+                </div>
+              </div>
+              <span class="gauge-label">Velocímetro</span>
+            </div>
+
+            <!-- Tachometer (RPM) -->
+            <div class="gauge-card">
+              <div class="gauge-svg-container">
+                <svg class="gauge-svg" viewBox="0 0 160 160">
+                  <circle class="gauge-bg-circle" cx="80" cy="80" r="70" />
+                  <circle id="rpm-progress" class="gauge-progress-circle rpm" cx="80" cy="80" r="70" />
+                </svg>
+                <div class="gauge-center-text">
+                  <span id="val-rpm" class="gauge-value">0</span>
+                  <span class="gauge-unit">RPM</span>
+                </div>
+              </div>
+              <span class="gauge-label">Conta-giros</span>
+            </div>
+          </div>
+
+          <!-- Secondary Telemetry Sensors -->
+          <div class="telemetry-grid">
+            <!-- Coolant Temp -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Temp. Motor</span>
+                <span class="sensor-icon">🌡️</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-coolant" class="sensor-val">--</span>
+                <span class="sensor-unit">°C</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-coolant" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Engine Load -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Carga Motor</span>
+                <span class="sensor-icon">⚙️</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-load" class="sensor-val">--</span>
+                <span class="sensor-unit">%</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-load" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Throttle Position -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Acelerador (TPS)</span>
+                <span class="sensor-icon">🏎️</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-throttle" class="sensor-val">--</span>
+                <span class="sensor-unit">%</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-throttle" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Battery Voltage -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Bateria</span>
+                <span class="sensor-icon">🔋</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-voltage" class="sensor-val">--</span>
+                <span class="sensor-unit">V</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-voltage" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- MAF Sensor -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Fluxo Ar (MAF)</span>
+                <span class="sensor-icon">💨</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-maf" class="sensor-val">--</span>
+                <span class="sensor-unit">g/s</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-maf" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Fuel Tank -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Tanque</span>
+                <span class="sensor-icon">⛽</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-fuel" class="sensor-val">--</span>
+                <span class="sensor-unit">%</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-fuel" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: DIAGNÓSTICO DTC (SCANNER) -->
+      <section id="view-scanner" class="view-section">
+        <div class="scanner-container">
+          <div class="scanner-actions">
+            <button id="btn-scan-dtc" class="btn btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Escanear Falhas da ECU
+            </button>
+
+            <button id="btn-clear-dtc" class="btn btn-danger">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Limpar Falhas (Reset MIL)
+            </button>
+
+            <button id="btn-inject-fault" class="btn btn-secondary" title="Injeta códigos no simulador para testar a detecção">
+              ⚡ Testar Falha Simulada
+            </button>
+          </div>
+
+          <!-- DTC List Container -->
+          <div id="dtc-results" class="dtc-list">
+            <div class="empty-state">
+              <div class="empty-state-icon">🛡️</div>
+              <h3>Nenhuma varredura realizada</h3>
+              <p>Clique em "Escanear Falhas da ECU" para consultar a memória de erros do veículo.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: COMPUTADOR DE BORDO & CONSUMO -->
+      <section id="view-trip" class="view-section">
+        <div class="trip-container">
+          <!-- Eco Score Card -->
+          <div class="eco-banner">
+            <div>
+              <h3 style="font-size: 1.1rem; font-weight: 700;">Score Eco-Driving</h3>
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Índice de condução eficiente e economia</p>
+            </div>
+            <div class="eco-score-number" id="trip-eco-score">100</div>
+          </div>
+
+          <!-- Trip Statistics Grid -->
+          <div class="trip-grid">
+            <!-- Consumo Instantâneo -->
+            <div class="sensor-card">
+              <span class="sensor-title">Consumo Instantâneo</span>
+              <div class="sensor-value-group">
+                <span id="trip-instant-kml" class="sensor-val">0.0</span>
+                <span class="sensor-unit">km/L</span>
+              </div>
+            </div>
+
+            <!-- Consumo Médio -->
+            <div class="sensor-card">
+              <span class="sensor-title">Consumo Médio</span>
+              <div class="sensor-value-group">
+                <span id="trip-avg-kml" class="sensor-val">0.0</span>
+                <span class="sensor-unit">km/L</span>
+              </div>
+            </div>
+
+            <!-- Distância Percorrida -->
+            <div class="sensor-card">
+              <span class="sensor-title">Distância</span>
+              <div class="sensor-value-group">
+                <span id="trip-distance" class="sensor-val">0.0</span>
+                <span class="sensor-unit">km</span>
+              </div>
+            </div>
+
+            <!-- Tempo de Viagem -->
+            <div class="sensor-card">
+              <span class="sensor-title">Tempo de Condução</span>
+              <div class="sensor-value-group">
+                <span id="trip-duration" class="sensor-val" style="font-size: 1.25rem;">00:00</span>
+              </div>
+            </div>
+
+            <!-- Custo Estimado -->
+            <div class="sensor-card">
+              <span class="sensor-title">Custo Estimado</span>
+              <div class="sensor-value-group">
+                <span class="sensor-unit" style="font-size: 1rem; color: #fff;">R$</span>
+                <span id="trip-cost" class="sensor-val">0.00</span>
+              </div>
+            </div>
+
+            <!-- Combustível Gasto -->
+            <div class="sensor-card">
+              <span class="sensor-title">Combustível Usado</span>
+              <div class="sensor-value-group">
+                <span id="trip-fuel-used" class="sensor-val">0.00</span>
+                <span class="sensor-unit">L</span>
+              </div>
+            </div>
+
+            <!-- Velocidade Máxima -->
+            <div class="sensor-card">
+              <span class="sensor-title">Velocidade Máx.</span>
+              <div class="sensor-value-group">
+                <span id="trip-max-speed" class="sensor-val">0</span>
+                <span class="sensor-unit">km/h</span>
+              </div>
+            </div>
+
+            <!-- Eventos de Condução -->
+            <div class="sensor-card">
+              <span class="sensor-title">Acelerações Bruscas</span>
+              <div class="sensor-value-group">
+                <span id="trip-hard-accel" class="sensor-val" style="color: var(--accent-yellow);">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end;">
+            <button id="btn-reset-trip" class="btn btn-secondary">
+              🔄 Zerar Dados da Viagem
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: TERMINAL & INFORMAÇÕES DA ECU -->
+      <section id="view-terminal" class="view-section">
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- ECU Summary Card -->
+          <div class="settings-group" style="margin-bottom: 0;">
+            <div class="settings-group-title">Identificação do Veículo</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem;">
+              <div><strong>Chassi (VIN):</strong> <span id="info-vin" style="color: var(--accent-cyan); font-family: var(--font-mono);">---</span></div>
+              <div><strong>Protocolo:</strong> <span id="info-protocol" style="color: #cbd5e1;">---</span></div>
+            </div>
+          </div>
+
+          <!-- Raw Terminal Box -->
+          <div style="display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Terminal de Comandos OBD2</span>
+              <button id="btn-clear-terminal" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.75rem;">Limpar</button>
+            </div>
+            <div id="terminal-output" class="terminal-box">
+              <div class="log-line info">[AutoPulse] Terminal OBD2 inicializado. Digite comandos AT ou PIDs hexadecimais.</div>
+            </div>
+            
+            <!-- Quick command chips -->
+            <div style="display: flex; gap: 6px; overflow-x: auto; padding: 6px 0;">
+              <button class="quick-chip btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" data-cmd="ATRV">ATRV (Bateria)</button>
+              <button class="quick-chip btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" data-cmd="ATDP">ATDP (Protocolo)</button>
+              <button class="quick-chip btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" data-cmd="0100">0100 (PIDs)</button>
+              <button class="quick-chip btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" data-cmd="010C">010C (RPM)</button>
+              <button class="quick-chip btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" data-cmd="0902">0902 (VIN)</button>
+              <button class="quick-chip btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" data-cmd="03">03 (DTC)</button>
+            </div>
+
+            <form id="terminal-form" class="terminal-input-row">
+              <input type="text" id="terminal-input" class="terminal-input" placeholder="Ex: ATRV, 010C, 03..." autocomplete="off" autocapitalize="characters">
+              <button type="submit" class="btn btn-primary" style="padding: 0 18px;">Enviar</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: CONFIGURAÇÕES & CONEXÃO -->
+      <section id="view-settings" class="view-section">
+        <div class="settings-container">
+          <div class="settings-group">
+            <div class="settings-group-title">Conexão do Adaptador ELM327</div>
+            
+            <div class="form-group">
+              <label for="select-conn-type">Método de Conexão</label>
+              <select id="select-conn-type" class="form-select">
+                <option value="simulator">🚗 Modo Simulador de ECU (Teste sem Carro)</option>
+                <option value="ble">🔵 Bluetooth (ELM327 BLE / 4.0 / 5.0)</option>
+                <option value="wifi">📶 Wi-Fi OBD2 (192.168.0.10:35000 / Ponte TCP)</option>
+                <option value="serial">🔌 Cabo USB OBD2 (Cabo OTG / Serial)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="select-vehicle-profile">Perfil do Veículo (Protocolo ECU)</label>
+              <select id="select-vehicle-profile" class="form-select">
+                <option value="generic" selected>🌐 Detecção automática do protocolo (recomendado p/ 1º teste)</option>
+                <option value="clio2011_can">🚗 Clio 2011 — CAN 500k (a validar)</option>
+                <option value="clio2005_fast">🚗 Clio 2005 — K-Line KWP rápido (a validar)</option>
+                <option value="clio2005_slow">🚗 Clio 2005 — K-Line KWP/ISO lento (a validar)</option>
+              </select>
+            </div>
+
+            <div id="wifi-settings" style="display: none;">
+              <div class="form-group">
+                <label for="input-wifi-ip">Endereço IP e Porta do Adaptador Wi-Fi</label>
+                <input type="text" id="input-wifi-ip" class="form-input" value="192.168.0.10:35000">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 14px;">
+              <button id="btn-connect" class="btn btn-primary" style="flex: 1;">
+                Conectar
+              </button>
+              <button id="btn-disconnect" class="btn btn-secondary" style="display: none; flex: 1;">
+                Desconectar
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-group-title">Preferências do Veículo</div>
+            
+            <div class="form-group">
+              <label for="select-fuel-type">Tipo de Combustível</label>
+              <select id="select-fuel-type" class="form-select">
+                <option value="gasoline">Gasolina (AFR 14.7:1)</option>
+                <option value="ethanol">Etanol (AFR 9.0:1)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="input-fuel-price">Preço do Litro (R$)</label>
+              <input type="number" step="0.01" id="input-fuel-price" class="form-input" value="5.89">
+            </div>
+
+            <div class="form-group">
+              <label for="select-polling-rate">Taxa de Atualização de Sensores</label>
+              <select id="select-polling-rate" class="form-select">
+                <option value="100">100 ms (Alta Precisão / CAN Bus)</option>
+                <option value="200" selected>200 ms (Padrão Recomendado)</option>
+                <option value="500">500 ms (Econômico / Adaptadores Antigos)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- About / Info -->
+          <div style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 12px;">
+            AutoPulse OBD2 • Desenvolvido para diagnósticos automotivos em tempo real
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- HUD Mode Exit Button -->
+    <button id="btn-exit-hud" class="hud-exit-btn">✕ Sair do HUD</button>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Painel</span>
+      </button>
+
+      <button class="nav-item" data-view="scanner">
+        <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+        <span>Diagnóstico</span>
+      </button>
+
+      <button class="nav-item" data-view="trip">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Viagem</span>
+      </button>
+
+      <button class="nav-item" data-view="terminal">
+        <svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+        <span>Terminal</span>
+      </button>
+
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Ajustes</span>
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
