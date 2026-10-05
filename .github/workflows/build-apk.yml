@@ -32,10 +32,6 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      - name: Ensure Android SDK licenses
-        run: |
-          yes | sdkmanager --licenses || true
-
       - name: Build web assets
         run: npm run build
 
@@ -50,6 +46,7 @@ jobs:
       - name: Build Debug APK
         working-directory: android
         run: |
+          set -e -o pipefail
           ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle.log
           ls -la app/build/outputs/apk/debug/
 
