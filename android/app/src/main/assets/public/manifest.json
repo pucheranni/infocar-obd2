@@ -1,0 +1,19 @@
+{
+  "name": "AutoPulse OBD2 - Scanner & Telemetria",
+  "short_name": "AutoPulse OBD2",
+  "description": "Aplicativo de telemetria automotiva, diagnóstico DTC e comunicação OBD-II / ELM327",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

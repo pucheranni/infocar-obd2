@@ -37,7 +37,7 @@ jobs:
 
       - name: Sync Capacitor Android
         run: |
-          npx cap sync android
+          npm run sync
 
       - name: Build Debug APK
         working-directory: android
@@ -57,10 +57,11 @@ jobs:
       - name: Publish Direct APK Download Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0-beta
+          tag_name: v0.2.1-beta
           name: AutoPulse OBD2 (APK Direto para Android)
           draft: false
           prerelease: false
+          make_latest: true
           fail_on_unmatched_files: true
           body: |
             ## 🚗 AutoPulse OBD2 - APK para Android

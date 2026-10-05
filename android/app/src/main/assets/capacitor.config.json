@@ -1,0 +1,8 @@
+{
+	"appId": "com.autopulse.obd2",
+	"appName": "AutoPulse OBD2",
+	"webDir": "www",
+	"server": {
+		"androidScheme": "https"
+	}
+}
