@@ -40,8 +40,7 @@ jobs:
       - name: Build Debug APK
         run: |
           cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee gradle-build.log || (echo "=== GRADLE LOG ===" && cat gradle-build.log | tail -n 80 && exit 1)
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
