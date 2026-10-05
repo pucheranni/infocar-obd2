@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -47,3 +50,19 @@ jobs:
         with:
           name: AutoPulse-OBD2-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish Direct APK Download Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.0-beta
+          name: AutoPulse OBD2 (APK Direto para Android)
+          body: |
+            ## 🚗 AutoPulse OBD2 - APK para Android
+            Download direto do instalador Android sem necessidade de login ou descompactação.
+            
+            - **Renault Clio 2011**: Cálculo de consumo Speed-Density por sensor MAP (PID 010B) + IAT (PID 010F)
+            - **Bluetooth Nativo**: Conexão direta com ELM327 Bluetooth clássico (SPP)
+            - **Multimídia Simultânea**: Compatível com som do carro e chamadas ativas
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
