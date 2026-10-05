@@ -6,6 +6,7 @@ import { listPairedDevices, isBtClassicAvailable } from './obd/transports/bt-cla
 import { ShiftCoach } from './obd/shift-coach.js';
 import { POIManager } from './routes/poi-manager.js';
 import { TripStateMachine, VehicleState } from './obd/state-machine.js';
+import { StorageManager } from './db/storage-manager.js';
 
 class AutoPulseApp {
   constructor() {
@@ -14,6 +15,8 @@ class AutoPulseApp {
     this.shiftCoach = new ShiftCoach();
     this.poiManager = new POIManager();
     this.stateMachine = new TripStateMachine();
+    this.storage = new StorageManager();
+    this.storage.init();
     this.isAdaptivePolling = true;
     this.currentView = 'dashboard';
     this.isHUD = false;
@@ -70,6 +73,7 @@ class AutoPulseApp {
     this.activeRouteStatus = document.getElementById('active-route-status');
     this.tripDetectedRoute = document.getElementById('trip-detected-route');
     this.tripPoiBadge = document.getElementById('trip-poi-badge');
+    this.btnExportTrips = document.getElementById('btn-export-trips');
     this.btnSaveFuel = document.getElementById('btn-save-fuel');
     this.fuelPresetBtns = document.querySelectorAll('.fuel-preset-btn');
     this.fuelTypeBtns = document.querySelectorAll('.fuel-type-btn');
@@ -301,6 +305,26 @@ class AutoPulseApp {
       setTimeout(() => { this.btnResetTrip.innerHTML = resetLabel; }, 1500);
     });
 
+    // Export Trips to CSV
+    if (this.btnExportTrips) {
+      this.btnExportTrips.addEventListener('click', async () => {
+        try {
+          const blob = await this.storage.exportData('csv');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `autopulse_relatorio_${new Date().toISOString().slice(0, 10)}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          this.appendTerminalLog('[BACKUP] Relatório CSV exportado com sucesso!', 'success');
+        } catch (err) {
+          alert('Erro ao exportar dados: ' + err.message);
+        }
+      });
+    }
+
     // Fuel settings
     [this.selectFuelType, this.inputFuelPrice, this.inputEthanolMix, this.inputDisplacement, this.inputFuelCal]
       .forEach(el => {
@@ -424,6 +448,23 @@ class AutoPulseApp {
         this.tripPoiBadge.style.color = 'var(--accent-green)';
         this.tripPoiBadge.style.borderColor = 'var(--accent-green)';
       }
+      // Persist trip to SQLite / IndexedDB
+      const tripRecord = {
+        start_time: this.trip.startTime,
+        end_time: Date.now(),
+        route_corridor: this.poiManager.originPOI && this.poiManager.destinationPOI 
+          ? `${this.poiManager.originPOI.id}_${this.poiManager.destinationPOI.id}` 
+          : (this.poiManager.originPOI ? `${this.poiManager.originPOI.id}_LIVRE` : 'CIDADE_LIVRE'),
+        direction: 'OUTBOUND',
+        origin: this.poiManager.originPOI ? this.poiManager.originPOI.name : 'Indefinido',
+        destination: this.poiManager.destinationPOI ? this.poiManager.destinationPOI.name : 'Indefinido',
+        distance_km: Number(this.trip.distanceKm.toFixed(2)),
+        fuel_consumed_liters: Number(this.trip.fuelConsumedLiters.toFixed(2)),
+        cost_reais: Number(this.trip.tripCost.toFixed(2)),
+        avg_speed: Number(this.trip.avgSpeed.toFixed(1)),
+        eco_score: this.trip.ecoScore
+      };
+      this.storage.saveTrip(tripRecord);
     };
 
     // Status changes
@@ -767,6 +808,7 @@ class AutoPulseApp {
     });
 
     try {
+      this.storage.saveFueling(record);
       const history = JSON.parse(localStorage.getItem('autopulse.fuelings') || '[]');
       history.unshift(record);
       localStorage.setItem('autopulse.fuelings', JSON.stringify(history.slice(0, 50)));

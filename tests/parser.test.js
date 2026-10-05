@@ -429,6 +429,98 @@ test('FSM: calcula amostragem adaptativa (200ms aceleração vs 3000ms cruzeiro 
   assert.equal(cruiseInterval, 3000);
 });
 
+// ---------------------------------------------------------------- Storage & Relational Analytics
+import { StorageManager } from '../js/db/storage-manager.js';
+
+test('Storage: getCorridorAnalytics agrupa e calcula médias de consumo e custo por corredor', async () => {
+  const sm = new StorageManager();
+  
+  // Simulando conjunto de viagens no corredor CASA_TRAPA
+  const mockTrips = [
+    {
+      route_corridor: 'CASA_TRAPA',
+      direction: 'OUTBOUND',
+      origin: 'Casa',
+      destination: 'Tetra Pak',
+      distance_km: 22.0,
+      fuel_consumed_liters: 1.6, // ~13.75 km/L
+      cost_reais: 5.60,
+      duration_minutes: 35
+    },
+    {
+      route_corridor: 'CASA_TRAPA',
+      direction: 'OUTBOUND',
+      origin: 'Casa',
+      destination: 'Tetra Pak',
+      distance_km: 22.0,
+      fuel_consumed_liters: 1.8,
+      cost_reais: 6.30,
+      duration_minutes: 42
+    },
+    {
+      route_corridor: 'CASA_TRAPA',
+      direction: 'INBOUND',
+      origin: 'Tetra Pak',
+      destination: 'Casa',
+      distance_km: 23.0,
+      fuel_consumed_liters: 2.0, // ~11.5 km/L
+      cost_reais: 7.00,
+      duration_minutes: 55
+    }
+  ];
+
+  // Intercepta getAllTrips no mock
+  sm.getAllTrips = async () => mockTrips;
+
+  const analytics = await sm.getCorridorAnalytics();
+  assert.equal(analytics.length, 2);
+
+  const outbound = analytics.find(a => a.direction === 'OUTBOUND');
+  assert.ok(outbound);
+  assert.equal(outbound.tripsCount, 2);
+  assert.equal(outbound.avgDistanceKm, '22.0');
+  // (22 + 22) / (1.6 + 1.8) = 44 / 3.4 = 12.94 km/L
+  assert.equal(outbound.avgConsumptionKmL, '12.94');
+  assert.equal(outbound.avgCostReais, '5.95');
+  assert.equal(outbound.avgDurationMin, 39);
+
+  const inbound = analytics.find(a => a.direction === 'INBOUND');
+  assert.ok(inbound);
+  assert.equal(inbound.tripsCount, 1);
+  assert.equal(inbound.avgConsumptionKmL, '11.50');
+  assert.equal(inbound.avgDurationMin, 55);
+});
+
+test('Storage: exportData gera payloads exportáveis em JSON e CSV', async () => {
+  const sm = new StorageManager();
+  sm.getAllTrips = async () => [{
+    id: 1,
+    route_corridor: 'CASA_UNICAMP',
+    direction: 'OUTBOUND',
+    origin: 'Casa',
+    destination: 'Unicamp',
+    distance_km: 12.5,
+    fuel_consumed_liters: 1.1,
+    cost_reais: 3.85,
+    eco_score: 95
+  }];
+  sm.getAllFuelings = async () => [{
+    id: 1,
+    liters: 40,
+    price_per_liter: 3.50,
+    fuel_type: 'ethanol'
+  }];
+
+  const jsonBlob = await sm.exportData('json');
+  assert.ok(jsonBlob);
+  assert.equal(jsonBlob.type, 'application/json;charset=utf-8;');
+
+  const csvBlob = await sm.exportData('csv');
+  assert.ok(csvBlob);
+  assert.equal(csvBlob.type, 'text/csv;charset=utf-8;');
+});
+
+
 
 
 
