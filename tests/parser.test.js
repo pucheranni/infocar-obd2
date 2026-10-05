@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { ELM327Client } from '../js/obd/elm327.js';
 import { VirtualECU } from '../js/obd/simulator.js';
 import { TripComputer } from '../js/trip.js';
+import { ShiftCoach } from '../js/obd/shift-coach.js';
 
 const CAN = 'ISO 15765-4 (CAN 11/500)';
 const KWP = 'ISO 14230-4 (KWP FAST)';
@@ -172,5 +173,58 @@ test('Trip: motor desligado (RPM < 300) zera consumo e não acumula combustível
       clearInterval(trip.timer);
     }
   });
+});
+
+// ---------------------------------------------------------------- ShiftCoach (NFS)
+
+test('Shift Coach: mapeia zonas do Renault D4D 1.0 16V (Eco, Power, Lugging, Redline)', () => {
+  const coach = new ShiftCoach();
+
+  // Motor parado
+  assert.equal(coach.update(0).zone, 'idle');
+
+  // Lugging (sub-torque: RPM < 1500 com carga alta MAP > 70)
+  coach.reset();
+  const lugging = coach.update(1300, 85);
+  assert.equal(lugging.zone, 'lugging');
+
+  // Eco Sweet Spot (1.800 a 2.600 RPM)
+  coach.reset();
+  const eco = coach.update(2200, 45);
+  assert.equal(eco.zone, 'eco');
+  assert.ok(eco.badgeText.includes('ECO'));
+
+  // Normal / Cruzeiro (2.600 a 3.800 RPM)
+  coach.reset();
+  const normal = coach.update(3100, 50);
+  assert.equal(normal.zone, 'normal');
+
+  // Power Sweet Spot (3.800 a 4.700 RPM)
+  coach.reset();
+  const power = coach.update(4250, 95);
+  assert.equal(power.zone, 'power');
+  assert.ok(power.badgeText.includes('POWER'));
+
+  // Redline / Shift Now (> 5.800 RPM)
+  coach.reset();
+  const redline = coach.update(6000, 90);
+  assert.equal(redline.zone, 'redline');
+});
+
+test('Shift Coach: histerese +-75 RPM impede oscilação em fronteiras de rotação', () => {
+  const coach = new ShiftCoach();
+  
+  // Entra no Eco aos 2200 RPM
+  coach.update(2200);
+  assert.equal(coach.currentZone, 'eco');
+
+  // RPM sobe levemente para 2630 (acima do teto nominal de 2600, mas dentro da histerese de 2675)
+  // Permanece em 'eco'
+  coach.update(2630);
+  assert.equal(coach.currentZone, 'eco');
+
+  // RPM agora ultrapassa 2750 por 1 segundo (20 ticks a 20Hz) -> transita para 'normal'
+  for (let i = 0; i < 20; i++) coach.update(2750);
+  assert.equal(coach.currentZone, 'normal');
 });
 

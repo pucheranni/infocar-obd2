@@ -221,6 +221,255 @@ body {
   gap: 16px;
 }
 
+/* Need for Speed Shift Light & Conduction Coach */
+.nfs-shift-card {
+  background: linear-gradient(135deg, rgba(16, 20, 28, 0.95), rgba(8, 10, 15, 0.98));
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.nfs-shift-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: all 0.25s ease;
+}
+
+.nfs-shift-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.nfs-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nfs-flag-icon {
+  font-size: 1rem;
+}
+
+.nfs-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #a0aec0;
+  text-transform: uppercase;
+}
+
+.nfs-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Bar Track and Markers */
+.nfs-bar-track {
+  width: 100%;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
+}
+
+.nfs-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 8px;
+  background: #4a5568;
+  transition: width 0.08s linear, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Sub-zones visual markers on track */
+.nfs-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.marker-sub { left: 0%; width: 17.5%; background: #ff9800; }
+.marker-eco { left: 22.5%; width: 10%; background: #00FF88; }
+.marker-normal { left: 32.5%; width: 15%; background: #00AAFF; }
+.marker-power { left: 47.5%; width: 11.2%; background: #9D4EDD; }
+.marker-redline { left: 72.5%; width: 27.5%; background: #FF3D3D; }
+
+/* Footer info */
+.nfs-shift-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nfs-rpm-display {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.nfs-rpm-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.nfs-rpm-unit {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #718096;
+}
+
+.nfs-hint-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+/* Dynamic State Themes */
+/* 1. Eco Sweet Spot (1.800 - 2.600 RPM) */
+.nfs-shift-card.zone-eco {
+  border-color: rgba(0, 255, 136, 0.6);
+  box-shadow: 0 0 25px rgba(0, 255, 136, 0.25), 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.nfs-shift-card.zone-eco::before { background: #00FF88; box-shadow: 0 0 12px #00FF88; }
+.nfs-shift-card.zone-eco .nfs-bar-fill {
+  background: linear-gradient(90deg, #00b359, #00FF88);
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.6);
+}
+.nfs-shift-card.zone-eco .nfs-badge {
+  background: rgba(0, 255, 136, 0.2);
+  color: #00FF88;
+  border-color: #00FF88;
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+/* 2. Normal / Cruise (2.600 - 3.800 RPM) */
+.nfs-shift-card.zone-normal {
+  border-color: rgba(0, 170, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 170, 255, 0.2);
+}
+.nfs-shift-card.zone-normal::before { background: #00AAFF; box-shadow: 0 0 10px #00AAFF; }
+.nfs-shift-card.zone-normal .nfs-bar-fill {
+  background: linear-gradient(90deg, #0066cc, #00AAFF);
+  box-shadow: 0 0 14px rgba(0, 170, 255, 0.5);
+}
+.nfs-shift-card.zone-normal .nfs-badge {
+  background: rgba(0, 170, 255, 0.2);
+  color: #00AAFF;
+  border-color: #00AAFF;
+}
+
+/* 3. Power Sweet Spot - Torque Máximo D4D (3.800 - 4.700 RPM) */
+.nfs-shift-card.zone-power {
+  border-color: rgba(157, 78, 221, 0.7);
+  box-shadow: 0 0 25px rgba(157, 78, 221, 0.35), 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.nfs-shift-card.zone-power::before { background: #9D4EDD; box-shadow: 0 0 14px #9D4EDD; }
+.nfs-shift-card.zone-power .nfs-bar-fill {
+  background: linear-gradient(90deg, #7b2cbf, #9D4EDD);
+  box-shadow: 0 0 18px rgba(157, 78, 221, 0.7);
+}
+.nfs-shift-card.zone-power .nfs-badge {
+  background: rgba(157, 78, 221, 0.25);
+  color: #e0aaff;
+  border-color: #9D4EDD;
+  box-shadow: 0 0 12px rgba(157, 78, 221, 0.4);
+}
+
+/* 4. Sub-torque / Lugging (< 1.600 RPM sob carga) */
+.nfs-shift-card.zone-lugging {
+  border-color: rgba(255, 152, 0, 0.7);
+  box-shadow: 0 0 20px rgba(255, 152, 0, 0.3);
+}
+.nfs-shift-card.zone-lugging::before { background: #ff9800; box-shadow: 0 0 10px #ff9800; }
+.nfs-shift-card.zone-lugging .nfs-bar-fill {
+  background: #ff9800;
+  box-shadow: 0 0 12px rgba(255, 152, 0, 0.5);
+}
+.nfs-shift-card.zone-lugging .nfs-badge {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffb74d;
+  border-color: #ff9800;
+}
+
+/* 5. Shift Alert (> 5.400 RPM) */
+.nfs-shift-card.zone-alert {
+  border-color: #ffaa00;
+  box-shadow: 0 0 25px rgba(255, 170, 0, 0.4);
+  animation: nfsPulse 1s infinite alternate;
+}
+.nfs-shift-card.zone-alert::before { background: #ffaa00; }
+.nfs-shift-card.zone-alert .nfs-bar-fill {
+  background: linear-gradient(90deg, #ff8800, #ffaa00);
+}
+.nfs-shift-card.zone-alert .nfs-badge {
+  background: rgba(255, 170, 0, 0.3);
+  color: #ffe066;
+  border-color: #ffaa00;
+}
+
+/* 6. Shift Now / Redline (> 5.800 RPM) - Strobe 2Hz */
+.nfs-shift-card.zone-redline {
+  border-color: #FF3D3D;
+  box-shadow: 0 0 30px rgba(255, 61, 61, 0.6);
+  animation: nfsFlash 0.5s infinite;
+}
+.nfs-shift-card.zone-redline::before { background: #FF3D3D; box-shadow: 0 0 15px #FF3D3D; }
+.nfs-shift-card.zone-redline .nfs-bar-fill {
+  background: #FF3D3D;
+  box-shadow: 0 0 20px #FF3D3D;
+}
+.nfs-shift-card.zone-redline .nfs-badge {
+  background: rgba(255, 61, 61, 0.35);
+  color: #ffffff;
+  border-color: #FF3D3D;
+  animation: nfsFlash 0.5s infinite;
+}
+
+@keyframes nfsFlash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.01); filter: brightness(1.3); }
+}
+
+@keyframes nfsPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.008); box-shadow: 0 0 30px rgba(255, 170, 0, 0.6); }
+}
+
 .gauges-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

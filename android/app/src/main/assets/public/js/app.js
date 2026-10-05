@@ -3,11 +3,13 @@ import { ELM327Client, ConnectionStatus } from './obd/elm327.js';
 import { TripComputer } from './trip.js';
 import { lookupDTC } from './obd/dtc-db.js';
 import { listPairedDevices, isBtClassicAvailable } from './obd/transports/bt-classic.js';
+import { ShiftCoach } from './obd/shift-coach.js';
 
 class AutoPulseApp {
   constructor() {
     this.client = new ELM327Client();
     this.trip = new TripComputer();
+    this.shiftCoach = new ShiftCoach();
     this.currentView = 'dashboard';
     this.isHUD = false;
     this.isHUDMirrored = false;
@@ -43,6 +45,16 @@ class AutoPulseApp {
     this.speedProgress = document.getElementById('speed-progress');
     this.valRpm = document.getElementById('val-rpm');
     this.rpmProgress = document.getElementById('rpm-progress');
+
+    // Need for Speed Shift Light & Coach Elements
+    this.nfsCard = document.getElementById('nfs-shift-assistant');
+    this.nfsRpmBar = document.getElementById('nfs-rpm-bar');
+    this.nfsModeBadge = document.getElementById('nfs-mode-badge');
+    this.nfsRpmFiltered = document.getElementById('nfs-rpm-filtered');
+    this.nfsHintIcon = document.getElementById('nfs-hint-icon');
+    this.nfsHintText = document.getElementById('nfs-hint-text');
+    this.rpmEmaFiltered = 0;
+    this.currentNfsZone = 'idle';
 
     // Sensors
     this.valInstantFuel = document.getElementById('val-instant-fuel');
@@ -522,6 +534,9 @@ class AutoPulseApp {
       this.rpmProgress.classList.remove('warning', 'danger');
     }
 
+    // Need for Speed Shift Coach & Sweet Spot Assistant
+    this.updateNfsShiftAssistant(rpm, data.map || 0);
+
     // Coolant Temp (-40 to 140 °C)
     const coolant = data.coolantTemp;
     this.valCoolant.innerText = coolant !== undefined ? coolant : '--';
@@ -576,6 +591,20 @@ class AutoPulseApp {
     // ECU Info
     if (data.vin && data.vin !== '---') this.infoVin.innerText = data.vin;
     if (data.protocol && data.protocol !== '---') this.infoProtocol.innerText = data.protocol;
+  }
+
+  // Assistente de Condução e Shift Light estilo Need for Speed para motor Renault D4D 1.0 16V
+  // Mapeamento aprovado pelo GPT-Sol com filtro EMA (alpha = 0.15) e histerese de +-75 RPM
+  updateNfsShiftAssistant(rpm, map = 0) {
+    if (!this.nfsCard || !this.nfsRpmBar) return;
+    const res = this.shiftCoach.update(rpm, map);
+
+    if (this.nfsRpmFiltered) this.nfsRpmFiltered.innerText = res.filteredRpm;
+    this.nfsRpmBar.style.width = `${res.barPercent}%`;
+    this.nfsCard.className = `nfs-shift-card zone-${res.zone}`;
+    if (this.nfsModeBadge) this.nfsModeBadge.innerText = res.badgeText;
+    if (this.nfsHintIcon) this.nfsHintIcon.innerText = res.hintIcon;
+    if (this.nfsHintText) this.nfsHintText.innerText = res.hintText;
   }
 
   updateTripUI() {

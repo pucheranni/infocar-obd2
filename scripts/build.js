@@ -30,4 +30,16 @@ for (const t of targets) {
   }
 }
 
+// Copia também para android/app/src/main/assets/public se existir
+const androidAssets = path.join(root, 'android', 'app', 'src', 'main', 'assets', 'public');
+if (fs.existsSync(androidAssets)) {
+  for (const t of targets) {
+    const src = path.join(root, t);
+    if (fs.existsSync(src)) {
+      copyRecursive(src, path.join(androidAssets, t));
+    }
+  }
+  console.log('Assets sincronizados com sucesso em android/app/src/main/assets/public!');
+}
+
 console.log('Build web para www/ concluído com sucesso!');

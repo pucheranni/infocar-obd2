@@ -61,6 +61,37 @@
       <!-- TAB 1: PAINEL / COCKPIT -->
       <section id="view-dashboard" class="view-section active">
         <div class="dashboard-grid">
+          <!-- Need for Speed RPM Shift Light & Conduction Assistant -->
+          <div id="nfs-shift-assistant" class="nfs-shift-card zone-idle">
+            <div class="nfs-shift-header">
+              <div class="nfs-title-group">
+                <span class="nfs-flag-icon">🏁</span>
+                <span class="nfs-title">SHIFT COACH • D4D 16V</span>
+              </div>
+              <span id="nfs-mode-badge" class="nfs-badge">STANDBY</span>
+            </div>
+            
+            <div class="nfs-bar-track">
+              <div id="nfs-rpm-bar" class="nfs-bar-fill"></div>
+              <div class="nfs-marker marker-sub" title="Sub-torque (<1.4k)"></div>
+              <div class="nfs-marker marker-eco" title="Eco Sweet Spot (1.8k-2.6k)"></div>
+              <div class="nfs-marker marker-normal" title="Normal (2.6k-3.8k)"></div>
+              <div class="nfs-marker marker-power" title="Power Sweet Spot (3.8k-4.7k)"></div>
+              <div class="nfs-marker marker-redline" title="Shift Now (>5.8k)"></div>
+            </div>
+
+            <div class="nfs-shift-footer">
+              <div class="nfs-rpm-display">
+                <span id="nfs-rpm-filtered" class="nfs-rpm-value">0</span>
+                <span class="nfs-rpm-unit">RPM</span>
+              </div>
+              <div id="nfs-coach-hint" class="nfs-hint-pill">
+                <span id="nfs-hint-icon">⚪</span>
+                <span id="nfs-hint-text">Motor Desligado</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Primary Circular Gauges -->
           <div class="gauges-row">
             <!-- Speedometer -->
