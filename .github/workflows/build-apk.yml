@@ -32,6 +32,10 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
+      - name: Ensure Android SDK licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
       - name: Build web assets
         run: npm run build
 
@@ -46,9 +50,16 @@ jobs:
       - name: Build Debug APK
         working-directory: android
         run: |
-          set -e -o pipefail
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle.log || (echo "### Gradle Build Error" >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && tail -n 100 /tmp/gradle.log >> $GITHUB_STEP_SUMMARY && echo '```' >> $GITHUB_STEP_SUMMARY && exit 1)
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle.log
           ls -la app/build/outputs/apk/debug/
+
+      - name: Dump Build Log to Summary
+        if: always()
+        run: |
+          echo "### 📋 Gradle Build Log Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 80 /tmp/gradle.log >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
