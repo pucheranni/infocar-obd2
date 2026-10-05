@@ -3,31 +3,31 @@
 > **Plataforma Open-Source de Telemetria Automotiva, Diagnóstico de Injeção Eletrônica (ECU) e Computador de Bordo Especializado para Renault Clio II (2005 / K-Line) e Renault Clio (2011 / CAN Bus).**  
 > Disponível como **Aplicativo Android Nativo (APK)** via Capacitor e **Progressive Web App (PWA)** de alta performance executável via Termux / Chrome.
 
-[![Android Release](https://img.shields.io/badge/Release-v0.2.1--beta-blue.svg)](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta)
+[![Android Release](https://img.shields.io/badge/Release-v0.3.0-blue.svg)](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.3.0)
 [![Build Status](https://img.shields.io/badge/Android%20APK-Passing-success.svg)](https://github.com/pucheranni/infocar-obd2/actions)
-[![Unit Tests](https://img.shields.io/badge/Tests-13%2F13%20Passing-brightgreen.svg)](tests/parser.test.js)
+[![Unit Tests](https://img.shields.io/badge/Tests-27%2F27%20Passing-brightgreen.svg)](tests/parser.test.js)
 [![Capacitor](https://img.shields.io/badge/Capacitor-8.5.2-blueviolet.svg)](package.json)
 [![Android SDK](https://img.shields.io/badge/CompileSdk-35%20(Android%2015)-orange.svg)](android/gradle.properties)
 
 ---
 
 > [!NOTE]
-> ### 🚀 Estado Atual do Projeto (`v0.2.1-beta`)
+> ### 🚀 Estado Atual do Projeto (`v0.3.0` — AutoPulse Copilot)
 > 
-> O projeto evoluiu significativamente de um protótipo web para uma solução híbrida completa testada em bancada e simulador:
+> O projeto foi promovido de um scanner telemático para o **AutoPulse Copilot**, um **Agente Autônomo de Gestão Veicular** com 5 fases de arquitetura validadas formalmente pelo **GPT-Sol** (Microsoft 365 Copilot corporativo via automação CDP na porta 9222):
 > 
-> 1. **Instalador Android Direto (.APK):** Disponível para download na release [v0.2.1-beta](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta). O wrapper nativo Android (Capacitor 8 / SDK 35) permite comunicação direta com adaptadores Bluetooth Classic (SPP - o popular "ELM327 mini azul"), contornando a restrição de BLE do Web Bluetooth dos navegadores.
-> 2. **Blindagem contra PID Dropouts:** O motor de aquisição decodifica a máscara de bits do comando `0100` ([`parseSupportedPIDs`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/elm327.js#L559)), protegendo sensores suportados (temperatura do arrefecimento `0105`, MAP `010B`, TPS `0111`, etc.) de serem desativados por respostas transitórias de `NO DATA`.
-> 3. **Consumo Speed-Density para Motores Renault 1.0 16V (D4D):** Motores Clio 1.0/1.6 nacionais não possuem sensor MAF. O cálculo foi migrado para modelo termodinâmico Speed-Density ($m = \frac{P \cdot V}{R \cdot T} \cdot \frac{\text{RPM}}{120}$) usando sensor MAP (`010B`) e IAT (`010F`), com calibração volumétrica ($\eta_v = 0.80$) e estequiometria brasileira Flex-Fuel (E27 / E100).
-> 4. **Proteção contra Consumo Fantasma:** Quando a ignição está ligada com motor parado ($\text{RPM} < 300$), a vazão é zerada e nenhum consumo fantasma é integrado.
-> 5. **Ergonomia Móvel (Samsung Galaxy S23 e Telas Modernas):** Bottom dock remodelado com respeito estrito à `safe-area-inset-bottom`, eliminando sobreposição da barra de gestos e botões nativos do Android.
-> 6. **Pipeline de CI/CD Integrado:** GitHub Actions automatizado com compilação de APKs em ambiente Ubuntu com JDK 21 e upload automático de artefatos release.
-> 7. **Assistência Corporativa GPT-Sol:** Skill integrada [`gpt-sol-bridge`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/.agents/skills/gpt-sol-bridge/SKILL.md) para revisão técnica via Microsoft 365 Copilot via CDP (porta 9222).
+> 1. **Need for Speed Shift Coach ([`shift-coach.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/shift-coach.js)):** Barra visual inspirada em simuladores com zonas calibradas para o motor Renault Clio 1.0 16V D4D (Eco 1800–2600 RPM, Power 3800–4700 RPM, Redline >5800 RPM), filtro passa-baixa EMA ($\alpha=0.15$) e histerese visual de $\pm 75\text{ RPM}$ para evitar oscilações em fronteiras.
+> 2. **One-Tap Refueling & Calibração Adaptativa em Malha Fechada ([`trip.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/trip.js)):** Modal rápido de registro de combustível (presets de 40L, 35L, 20L, Custom, Etanol R$ 3,50, Gasolina R$ 5,89). Calibra o fator de injeção $\text{FCF}$ de forma adaptativa apenas quando o tanque for completado ($\ge 15\text{L}$), mantendo intacta a eficiência volumétrica $\eta_v$.
+> 3. **Geofencing Semântico & POIs Campinas ([`poi-manager.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/routes/poi-manager.js)):** Detecção automática de origem e destino dentro do conjunto finito de rotas do usuário (Casa Chapadão, A2Z Valinhos, Tetra Pak Monte Mor, Unicamp Barão Geraldo, Super Texas Carnes SP e Mauá) usando fórmula de Haversine pura e Last Known Good Position (LKGP 120s móvel / 300s parado).
+> 4. **Máquina de Estados Finita (FSM) & Anti-Stall ([`state-machine.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/state-machine.js)):** Ciclo de vida robusto (`IDLE_STANDBY` $\rightarrow$ `CONNECTING` $\rightarrow$ `CONNECTED` $\rightarrow$ `TRIP_ACTIVE` $\rightarrow$ `PARKED_CONSOLIDATING` $\rightarrow$ `SLEEP`). Debounce de 60s em parada para impedir encerramento falso em semáforos e amostragem adaptativa (200ms em aceleração dinâmica, 3s em cruzeiro, 30s em repouso).
+> 5. **Permissões Android 14/15 ([`AndroidManifest.xml`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/android/app/src/main/AndroidManifest.xml)):** Declaração de `foregroundServiceType="connectedDevice|location"`, garantindo que o rastreamento veicular e a comunicação Bluetooth Classic nunca sejam encerrados pelo sistema operacional.
+> 6. **Persistência Relacional & Exportação Assíncrona ([`storage-manager.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/db/storage-manager.js)):** Estrutura SQLite / IndexedDB com índices compostos por corredor (`route_corridor, direction`), cálculo analítico de custo e consumo médio por trajeto e download assíncrono em CSV e JSON sem travar a interface.
+> 7. **27 Testes Automatizados:** Suíte 100% verde cobrindo decodificação CAN/K-Line, filtros, calibração, rotas, FSM e banco relacional.
 
 📖 **Documentação Complementar de Engenharia:**
-- [Plano de Melhoria Completo (24 achados, metas e roadmap)](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/PLANO_DE_MELHORIA.md)
-- [Roteiro de Descoberta Prático para o Adaptador Azul](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/ROTEIRO_DESCOBERTA.md)
-- [Estado Atual e Próximos Passos](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/ESTADO_E_PROXIMOS_PASSOS.md)
+- [Plano de Execução Completo com Prompts do GPT-Sol](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/PLANO_EXECUCAO_COPILOT_SOL.md)
+- [Dossiê Arquitetural do Agente de Gestão Veicular](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/AGENTE_GESTAO_VEICULAR.md)
+- [Relatório Consolidado de Execução das 5 Fases](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/ANALISE_GPT_SOL_AGENTE.md)
 
 ---
 
@@ -47,8 +47,13 @@
    - [ADR-007: Head-Up Display (HUD) Noturno com Inversão Óptica](#adr-007-head-up-display-hud-noturno-com-inversão-óptica)
    - [ADR-008: Empacotamento Android Nativo (Capacitor) para Suporte a Bluetooth Classic](#adr-008-empacotamento-android-nativo-capacitor-para-suporte-a-bluetooth-classic)
    - [ADR-009: Decodificação de Bitmask PID 0100 e Blindagem contra Dropouts Transitórios](#adr-009-decodificação-de-bitmask-pid-0100-e-blindagem-contra-dropouts-transitórios)
+   - [ADR-010: Shift Coach & Need for Speed RPM Sweet Spot](#adr-010-shift-coach--need-for-speed-rpm-sweet-spot)
+   - [ADR-011: Abastecimento One-Tap e Calibração Adaptativa em Malha Fechada](#adr-011-abastecimento-one-tap-e-calibração-adaptativa-em-malha-fechada)
+   - [ADR-012: Geofencing Semântico e POIs com Haversine & LKGP](#adr-012-geofencing-semântico-e-pois-com-haversine--lkgp)
+   - [ADR-013: FSM Veicular com Anti-Stall e Foreground Service Android 14/15](#adr-013-fsm-veicular-com-anti-stall-e-foreground-service-android-1415)
+   - [ADR-014: Persistência Relacional SQLite / IndexedDB e Análise por Corredor](#adr-014-persistência-relacional-sqlite--indexeddb-e-análise-por-corredor)
 6. [Plano de Implementação Faseado (Roadmap)](#6-plano-de-implementação-faseado-roadmap)
-7. [Suíte de Testes Automatizados (13 Testes)](#7-suíte-de-testes-automatizados-13-testes)
+7. [Suíte de Testes Automatizados (27 Testes)](#7-suíte-de-testes-automatizados-27-testes)
 8. [Guia de Operação e Instalação Prática](#8-guia-de-operação-e-instalação-prática)
    - [Opção A: Instalação via APK Direto (Recomendada para Bluetooth Classic)](#opção-a-instalação-via-apk-direto-recomendada-para-bluetooth-classic)
    - [Opção B: Execução via Termux (PWA / Adaptadores Wi-Fi ou BLE)](#opção-b-execução-via-termux-pwa--adaptadores-wi-fi-ou-ble)
@@ -238,51 +243,52 @@ flowchart TD
 * **Contexto:** Respostas ocasionais de `NO DATA` em barramentos CAN ou K-Line causavam o descarte prematuro de PIDs essenciais (como temperatura do arrefecimento `0105` ou sensor MAP `010B`).
 * **Decisão:** Implementar a decodificação da máscara de bits de 32 bits retornada pelo comando `0100` (`parseSupportedPIDs`). PIDs presentes nessa máscara são registrados em `ecuSupportedPids` e ficam imunes ao descarte em `unsupportedPids`.
 
+### ADR-010: Shift Coach & Need for Speed RPM Sweet Spot
+* **Status:** Aceito e Implementado (Fase 1 Copilot).
+* **Contexto:** Manter o motorista na faixa ideal de torque sem desviar a atenção da condução.
+* **Decisão:** Implementar módulo [`ShiftCoach`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/shift-coach.js) com zonas calibradas para Renault D4D 1.0 16V (Eco 1800-2600, Power 3800-4700, Redline >5800), suavização com filtro EMA ($\alpha=0.15$) e histerese visual de $\pm 75\text{ RPM}$.
+
+### ADR-011: Abastecimento One-Tap e Calibração Adaptativa em Malha Fechada
+* **Status:** Aceito e Implementado (Fase 2 Copilot).
+* **Contexto:** Incertezas estequiométricas em combustíveis brasileiros (E27 vs E100) e desgaste de bicos injetores exigem correção empírica contínua.
+* **Decisão:** Modal de abastecimento rápido (presets de 40L, 35L, 20L, Custom) associado ao cálculo adaptativo: apenas abastecimentos de tanque cheio com $\ge 15\text{L}$ recalibram o fator de injeção $\text{FCF}$ com amortecimento adaptativo ponderado (peso 0.15 para desvio >8%, 0.10 caso contrário). Abastecimentos parciais registram apenas o custo financeiro.
+
+### ADR-012: Geofencing Semântico e POIs com Haversine & LKGP
+* **Status:** Aceito e Implementado (Fase 3 Copilot).
+* **Contexto:** Reconhecer automaticamente trajetos habituais (Casa, Trabalho Tetra Pak, A2Z, Unicamp, Texas Carnes SP e Mauá) sem sobrecarregar a bateria com serviços pesados de geofencing externo.
+* **Decisão:** Motor [`POIManager`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/routes/poi-manager.js) com Haversine esférico puro em memória, raios calibrados por POI (120m a 400m) e algoritmo de *Last Known Good Position* (LKGP: tolerância de 120s em movimento e 300s parado). Chegada confirmada após 180s parado dentro do raio do destino com $\text{RPM} = 0$.
+
+### ADR-013: FSM Veicular com Anti-Stall e Foreground Service Android 14/15
+* **Status:** Aceito e Implementado (Fase 4 Copilot).
+* **Contexto:** Paradas momentâneas em semáforos ou atuação de sistemas Start/Stop não podem encerrar viagens indevidamente, e o processo não pode ser morto pelo Android em segundo plano.
+* **Decisão:** Máquina de estados formal [`TripStateMachine`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/state-machine.js) (`IDLE_STANDBY` $\rightarrow$ `CONNECTING` $\rightarrow$ `CONNECTED` $\rightarrow$ `TRIP_ACTIVE` $\rightarrow$ `PARKED_CONSOLIDATING` $\rightarrow$ `SLEEP`) com debounce de 60s antes de consolidar parada, amostragem adaptativa (200ms dinâmico, 3s cruzeiro, 30s repouso) e declaração de `foregroundServiceType="connectedDevice|location"` no [`AndroidManifest.xml`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/android/app/src/main/AndroidManifest.xml).
+
+### ADR-014: Persistência Relacional SQLite / IndexedDB e Análise por Corredor
+* **Status:** Aceito e Implementado (Fase 5 Copilot).
+* **Contexto:** Consultas analíticas rápidas de consumo histórico e custos por corredor de deslocamento (ex.: Casa $\leftrightarrow$ Tetra Pak) sem bloquear os 60 FPS da interface do usuário.
+* **Decisão:** [`StorageManager`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/db/storage-manager.js) com índices compostos `(route_corridor, direction)` e `(route_corridor, start_time)`, expurgo de telemetria bruta após 30 dias e exportação assíncrona em Blobs CSV/JSON.
+
 ---
 
 ## 6. Plano de Implementação Faseado (Roadmap)
 
-### 📌 Fase 1: Fundação de Hardware & Handshake Específico (Concluída ✅)
-- [x] Criação do microservidor Python `server.py` no Termux.
-- [x] Implementação da camada de transporte abstrata (BLE, USB OTG, Wi-Fi Socket, Simulador).
-- [x] Implementação dos perfis `clio2011_can`, `clio2005_fast` e `clio2005_slow`.
-- [x] Seletor visual de perfis e persistência em `localStorage`.
+### 📌 Fases de Fundação & Plataforma (Concluídas ✅)
+- [x] **Fase 1 (Handshake):** Conexão KWP2000 Fast Init e CAN Bus com watchdog K-Line.
+- [x] **Fase 2 (Telemetria):** Gauges SVG, monitor de arrefecimento, tensão de bateria.
+- [x] **Fase 3 (Scanner DTC):** Diagnóstico modos 03/07 e limpeza de falhas (Modo 04).
+- [x] **Fase 4 (Computador de Bordo):** Cálculo Speed-Density MAP+IAT e corte de consumo fantasma.
+- [x] **Fase 5 (App Android Nativo):** Capacitor 8, suporte a Bluetooth Classic SPP e layout S23.
 
-### 📌 Fase 2: Telemetria & Monitoramento em Tempo Real (Concluída ✅)
-- [x] Mostradores circulares com animação SVG contínua (`dasharray`/`dashoffset`).
-- [x] Conta-giros com indicação de corte de giro (*redline*).
-- [x] Monitor de temperatura com alerta em >100°C.
-- [x] Tensão de bateria com diagnóstico de alternador (`ATRV`).
-- [x] Watchdog de *Keep-Alive* K-Line.
-
-### 📌 Fase 3: Diagnóstico DTC & Limpeza de Falhas (Concluída ✅)
-- [x] Varredura de códigos Modo 03 (confirmados) e Modo 07 (pendentes).
-- [x] Banco de dados offline de DTCs em português com causas prováveis Renault.
-- [x] Procedimento de limpeza de erros (Modo 04 / Reset da luz da injeção).
-- [x] Tratamento de respostas multi-frame ISO-TP (linhas `0:` e `1:`).
-
-### 📌 Fase 4: Computador de Bordo & Otimização Hi-Flex (Concluída ✅)
-- [x] Módulo `trip.js` com cálculo Speed-Density (MAP + IAT) para motores sem MAF.
-- [x] Integração temporal contínua baseada em delta de relógio real (`dt`).
-- [x] Filtro de aceleração brusca e cálculo de pontuação Eco-Driving.
-- [x] Cards dinâmicos no Cockpit: Consumo Instantâneo (km/L ou L/h) e Média da Viagem.
-- [x] Blindagem contra acúmulo fantasma de combustível com motor desligado ($\text{RPM} < 300$).
-
-### 📌 Fase 5: Distribuição Nativa & Ergonomia Mobile (Concluída ✅)
-- [x] Empacotamento nativo Android com Capacitor 8 (SDK 35 / Android 15).
-- [x] Esteira automatizada no GitHub Actions gerando release com APK direto ([v0.2.1-beta](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta)).
-- [x] Reestruturação da barra de navegação inferior (dock) para Samsung Galaxy S23 e navegação por gestos do Android (`safe-area-inset-bottom`).
-- [x] Blindagem de PIDs confirmados via bitmask do PID `0100`.
-
-### 📌 Fase 6: Validação em Campo & Expansões Futuras (Próximos Passos 🚀)
-- [ ] Validação com conexão física no conector OBD-II do Clio 2011 e Clio 2005.
-- [ ] Data Logging para exportação de telemetria completa da viagem em arquivo `.csv`.
-- [ ] Módulo de teste de aceleração 0-100 km/h com disparo automático via telemetria CAN.
-- [ ] Integração com identificadores da UCH Renault (estado de portas, travas e luzes).
+### 📌 Fases AutoPulse Copilot — Agente de Gestão Veicular (Concluídas ✅)
+- [x] **Copilot Fase 1:** Need for Speed Shift Light & Coach calibrado para Renault Clio D4D 16V.
+- [x] **Copilot Fase 2:** Modal One-Tap Refueling e calibração de malha fechada adaptativa.
+- [x] **Copilot Fase 3:** Geofencing semântico em Campinas/SP com LKGP e POI Manager.
+- [x] **Copilot Fase 4:** Máquina de Estados Finita (FSM), amostragem adaptativa e anti-stall.
+- [x] **Copilot Fase 5:** Persistência relacional SQLite/IndexedDB e exportação assíncrona em CSV.
 
 ---
 
-## 7. Suíte de Testes Automatizados (13 Testes)
+## 7. Suíte de Testes Automatizados (27 Testes)
 
 O repositório possui uma suíte de testes unitários automatizados em [`tests/parser.test.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/tests/parser.test.js) utilizando o executor nativo do Node.js (`node --test`), sem dependências pesadas externas:
 
@@ -290,7 +296,7 @@ O repositório possui uma suíte de testes unitários automatizados em [`tests/p
 npm test
 ```
 
-### Resultados da Suíte:
+### Resultados da Suíte (100% Passando):
 ```text
 ✔ CAN: pula o byte de contagem e decodifica dois DTCs
 ✔ K-Line: sem byte de contagem
@@ -305,8 +311,22 @@ npm test
 ✔ PID 0100: decodifica mapa de bits do Clio 2011 (BE 3E B8 11)
 ✔ ELM327: PID suportado pela ECU nunca é jogado em unsupportedPids em NO DATA transitório
 ✔ Trip: motor desligado (RPM < 300) zera consumo e não acumula combustível fantasma
+✔ Shift Coach: mapeia zonas do Renault D4D 1.0 16V (Eco, Power, Lugging, Redline)
+✔ Shift Coach: histerese +-75 RPM impede oscilação em fronteiras de rotação
+✔ Trip: registerFueling com tanque cheio > 15L recalibra com amortecimento adaptativo
+✔ Trip: registerFueling parcial (< 15L ou isFullTank=false) não recalibra fator físico
+✔ POI: haversineDistanceKm calcula distância geodésica com precisão
+✔ POI: detecta origem ao estar dentro do raio e ignora posições fora do raio
+✔ POI: LKGP (Last Known Good Position) respeita janela de 120s em movimento e 300s parado
+✔ POI: checkArrival detecta chegada somente após 180s parado no raio do destino com RPM=0
+✔ FSM: transita de IDLE_STANDBY para CONNECTED e TRIP_ACTIVE ao ligar motor
+✔ FSM: debounce de parada não encerra viagem no semáforo (anti-stall)
+✔ FSM: consolida e finaliza viagem em SLEEP após tempo de permanência no POI
+✔ FSM: calcula amostragem adaptativa (200ms aceleração vs 3000ms cruzeiro vs 30000ms sleep)
+✔ Storage: getCorridorAnalytics agrupa e calcula médias de consumo e custo por corredor
+✔ Storage: exportData gera payloads exportáveis em JSON e CSV
 
-ℹ tests 13 | pass 13 | fail 0 | duration_ms ~380ms
+ℹ tests 27 | pass 27 | fail 0 | duration_ms ~390ms
 ```
 
 ---
@@ -321,7 +341,7 @@ Nos modelos **Clio II (2005 e 2011)**, o conector de 16 pinos localiza-se **no c
 ### Opção A: Instalação via APK Direto (Recomendada para Bluetooth Classic)
 Ideal para uso com o adaptador mini azul ELM327 ou qualquer scanner Bluetooth clássico:
 1. No smartphone Android, acesse a página de releases do projeto:
-   👉 **[Download AutoPulse OBD2 APK (v0.2.1-beta)](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta)**
+   👉 **[Download AutoPulse OBD2 APK (v0.3.0)](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.3.0)**
 2. Baixe o arquivo `app-debug.apk` e instale no dispositivo (autorize a instalação de fontes desconhecidas se solicitado).
 3. Abra o **AutoPulse OBD2**, emparelhe seu adaptador no menu Bluetooth do Android e conecte.
 

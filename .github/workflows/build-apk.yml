@@ -73,19 +73,24 @@ jobs:
       - name: Publish Direct APK Download Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.1-beta
-          name: AutoPulse OBD2 (APK Direto para Android)
+          tag_name: v0.3.0
+          name: AutoPulse Copilot v0.3.0 (APK Direto para Android)
           draft: false
           prerelease: false
           make_latest: true
           fail_on_unmatched_files: true
           body: |
-            ## 🚗 AutoPulse OBD2 - APK para Android
-            Download direto do instalador Android sem necessidade de login ou descompactação.
+            ## 🏎️ AutoPulse Copilot v0.3.0 — Agente de Gestão Veicular
+            Download direto do instalador Android (`app-debug.apk`) sem necessidade de login ou descompactação.
             
-            - **Renault Clio 2011**: Cálculo de consumo Speed-Density por sensor MAP (PID 010B) + IAT (PID 010F)
-            - **Bluetooth Nativo**: Conexão direta com ELM327 Bluetooth clássico (SPP)
-            - **Multimídia Simultânea**: Compatível com som do carro e chamadas ativas
+            ### 🚀 Destaques da Versão v0.3.0:
+            - **🏁 Need for Speed Shift Coach**: Barra de auxílio de troca de marcha calibrada para o motor Renault Clio D4D 1.0 16V (Eco 1800-2600, Power 3800-4700, Redline >5800) com filtro EMA (α=0.15) e histerese visual de ±75 RPM.
+            - **⛽ One-Tap Refueling & Calibração em Malha Fechada**: Modal rápido de abastecimento (40L, 35L, 20L, Custom) com calibração adaptativa do fator físico de combustível em tanques cheios ≥15L.
+            - **🗺️ Geofencing Semântico & Rotas em Campinas**: Detecção automática de origem e destino nos POIs habituais (Casa Chapadão, Tetra Pak Monte Mor, A2Z Valinhos, Unicamp, Super Texas Carnes SP e Mauá) com Last Known Good Position (LKGP 120s/300s).
+            - **⚙️ Máquina de Estados Finita (FSM) & Anti-Stall**: Gestão de estados veiculares (`IDLE_STANDBY` ➔ `CONNECTING` ➔ `CONNECTED` ➔ `TRIP_ACTIVE` ➔ `PARKED_CONSOLIDATING` ➔ `SLEEP`) com debounce de 60s contra paradas em semáforos e amostragem adaptativa.
+            - **📱 Android 14/15 Ready**: Foreground Service com tipos `connectedDevice|location` e permissões para execução contínua em segundo plano.
+            - **📊 Persistência Relacional & Exportação CSV**: SQLite / IndexedDB com relatórios analíticos agrupados por corredor de mobilidade e download assíncrono em CSV.
+            - **🧪 27 Testes Automatizados**: Suíte 100% verde validada com o executor nativo do Node.js (`npm test`).
           files: android/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
