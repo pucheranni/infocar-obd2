@@ -1,138 +1,226 @@
 # 🧠 AutoPulse Copilot: Agente Interno de Gestão Veicular Inteligente
 
-> **Documento de Requisitos, Arquitetura e Especificação Funcional**  
-> **Veículo Principal:** Renault Clio II Campus 1.0 16V Hi-Flex (2011)  
-> **Localidade / Região:** Campinas e Região Metropolitana (Padre Anchieta / Barão Geraldo / Sousas / Mauá / Monte Mor)  
-> **Objetivo:** Transformar o AutoPulse OBD2 de um monitor passivo em um **Agente Inteligente de Gerenciamento 360°** do veículo, com automação total de viagens (Zero-Click), auditoria financeira de abastecimentos e detecção semântica de rotas habituais.
+> **Documento de Requisitos, Arquitetura e Especificação Funcional (Revisado & Aprovado pelo GPT-Sol)**  
+> **Veículo Principal:** Renault Clio II Campus 1.0 16V Hi-Flex (D4D 760 - 2011)  
+> **Localidade / Região:** Campinas e RMC (Jardim Chapadão / Valinhos / Monte Mor / Barão Geraldo / Mauá / São Paulo)  
+> **Objetivo:** Transformar o AutoPulse OBD2 de um monitor passivo em um **Agente Inteligente de Gerenciamento 360°** do veículo, com automação total de viagens (Zero-Click), assistente de condução dinâmico (estilo Need for Speed RPM Sweet Spot), auditoria financeira de abastecimentos e detecção semântica de rotas habituais.
 
 ---
 
 ## 1. Visão do Produto & Filosofia "Zero Fricção"
 
-O motorista não deve precisar operar o celular enquanto entra, dirige ou sai do carro. O sistema deve operar como um **copiloto autônomo e invisível** que:
-1. **Acorda e conecta sozinho** assim que a ignição do veículo energiza o adaptador OBD2;
-2. **Identifica a origem e o destino** comparando as coordenadas com o catálogo de rotas frequentes;
-3. **Totaliza e fecha a viagem (Trip A/B)** sem necessidade de apertar botões;
-4. **Calcula o balanço financeiro real** cruzando litros abastecidos (ex: 40L Etanol) com os dados termodinâmicos de injeção e odometria;
-5. **Dorme com economia de bateria** quando fora do alcance do carro, fazendo checagens esparsas com backoff inteligente.
+O condutor não precisa operar o celular enquanto entra, dirige ou sai do carro. O sistema opera como um **copiloto autônomo, reativo e inteligente**:
+1. **Acorda e conecta sozinho** através do gatilho primário do Bluetooth de mídia do carro ou detecção do ELM327 na ignição;
+2. **Assiste a condução em tempo real:** Indicador de troca de marcha ideal (*Shift Light & Sweet Spot* estilo Need for Speed) otimizando consumo ou potência para o motor Renault D4D 16V;
+3. **Identifica a origem e o destino** comparando as coordenadas geográficas com o catálogo finito de rotas habituais via cálculo leve de Haversine;
+4. **Totaliza e fecha a viagem (Trip A/B)** sem necessidade de intervenção humana quando o carro estaciona por mais de 3 minutos;
+5. **Audita custos e abastecimentos** cruzando os litros inseridos na bomba com o consumo termodinâmico Speed-Density, autoajustando o fator de calibração em malha fechada;
+6. **Dorme com economia máxima de bateria** quando fora do alcance do carro, operando com máquina de estados explícita e backoff adaptativo.
 
 ---
 
-## 2. Pilares de Funcionalidade
+## 2. Pilares de Funcionalidade & Arquitetura Aprovada (GPT-Sol)
 
 ```mermaid
-mindmap
-  root((AutoPulse Copilot))
-    Conectividade Autonoma
-      Detecção de Ignição / BT Beacon
-      Handshake Invisivel sem Clique
-      Backoff Inteligente fora do Carro
-      Gestão de Energia / Sleep
-    Gestao Semantica de Rotas
-      Catalogo Finito de POIs Campinas
-      Geofencing Raio 150m
-      Matching Automatico Origem Destino
-      Diferencial Trafego e Horario
-    Auditoria Financeira e Abastecimento
-      Registro de Tanque Litros e Preco
-      Calibracao Automatica Bomba vs App
-      Custo Real R$ por km Rodado
-      TCO e Livro de Manutencao
-    Metricas e Inteligencia
-      Score de Conducao por Rota
-      Desgaste Mecanico e Saude ECU
-      Historico Consolidado Trip A e B
-      Relatorios Semanais Executivos
+flowchart TD
+    subgraph Triggers["1. Gatilhos de Inicialização (Zero Fricção)"]
+        BT_MEDIA["Bluetooth Áudio/Carro Conectado (Trigger Primário)"]
+        BT_ELM["ELM327 Energizado na Ignição (Trigger Secundário)"]
+        BR["Android Broadcast Receiver"]
+    end
+
+    subgraph CoreEngine["2. Motor do Agente Copilot"]
+        FGS["Android Foreground Service"]
+        FSM["Máquina de Estados (FSM)"]
+        NFS["Need for Speed Shift Assist (RPM Sweet Spot)"]
+        GEO["Geofencing Lógico (Haversine nos 6 POIs)"]
+        FUEL["Motor Speed-Density + Calibração Fechada"]
+    end
+
+    subgraph Storage["3. Camada de Persistência"]
+        SQLITE["SQLite Relacional (Trips, Telemetria, Abastecimentos, POIs)"]
+    end
+
+    BT_MEDIA --> BR
+    BT_ELM --> BR
+    BR --> FGS
+    FGS --> FSM
+    FSM --> NFS
+    FSM --> GEO
+    FSM --> FUEL
+    FSM --> SQLITE
 ```
 
 ---
 
-## 3. Especificação das Rotas Frequentes (Mapeamento Geográfico Campinas)
+## 3. Assistente de Condução Dinâmico: "Need for Speed" Shift & Sweet Spot
 
-O condutor opera em um conjunto finito e determinístico de trajetos. Cada ponto de interesse (POI) possui uma coordenada central e uma cerca geográfica (*geofence*) de 150 a 250 metros:
+Inspirado nos indicadores de troca de marcha de alta precisão (estilo Need for Speed / Telemetria de Pista), o aplicativo avalia o mapa de torque e eficiência térmica do motor **Renault 1.0 16V Hi-Flex (D4D)**:
+- **Cilindrada:** 999 cm³ (4 cilindros, 16 válvulas)
+- **Torque Máximo:** 10,1 kgfm (Gasolina) / 10,3 kgfm (Etanol) a **4.250 RPM**
+- **Potência Máxima:** 76 cv (Gasolina) / 77 cv (Etanol) a **5.750 RPM**
+- **Faixa de Eficiência Térmica (Cruzeiro Econômico):** **1.800 a 2.500 RPM**
 
-| ID POI | Ponto de Interesse (POI) | Região / Bairro (Campinas) | Contexto de Uso |
+### Modos do Assistente de Marcha (Shift Light)
+
+| Modo | Faixa de RPM (D4D 16V) | Feedback Visual no Cockpit | Propósito de Condução |
 | :--- | :--- | :--- | :--- |
-| `POI_CASA` | **Casa** | Região Padre Anchieta / Campinas | Ponto de partida e retorno base |
-| `POI_A2E` | **A2E** | Campinas | Trabalho / Estudo / Parceiro |
-| `POI_TRAPA` | **Tetra Pak ("Trapa")** | Monte Mor / Campinas | Local de trabalho corporativo |
-| `POI_UNICAMP` | **Unicamp** | Barão Geraldo, Campinas | Universidade / Campus |
-| `POI_TEXAS` | **Texas** | Campinas | Ponto frequente de convivência |
-| `POI_GIOVANI` | **Giovani Grande** | Campinas | Parada habitual |
-| `POI_FOZ_MAUA` | **Rua Foz do Iguaçu / Mauá** | Jardim Mauá / Vila Nova | Residência / Família / Destino chave |
-
-### Matriz de Rotas Automatizadas (Classificação Direta)
-
-O aplicativo identifica a rota combinando o ponto de partida ($POI_{\text{origem}}$) e o ponto de parada ($POI_{\text{destino}}$):
-
-* **Rota 1:** `Casa ➔ A2E` | `A2E ➔ Casa`
-* **Rota 2:** `Casa ➔ Tetra Pak` | `Tetra Pak ➔ Casa` (Trabalho diário)
-* **Rota 3:** `Casa ➔ Unicamp` | `Unicamp ➔ Casa` (Perna acadêmica)
-* **Rota 4:** `Casa ➔ Texas / Giovani Grande` | `Texas ➔ Rua Foz do Iguaçu / Mauá`
-* **Rota 5:** `Mauá / Foz do Iguaçu ➔ Casa` ou `Mauá ➔ Texas`
-
-> **Regra de Classificação:**  
-> Se o veículo permaneceu desligado ($\text{RPM} = 0$) por mais de 5 minutos dentro do raio de um POI, a viagem anterior é finalizada e catalogada com o nome da rota, e uma nova viagem é iniciada ao religar a ignição.
+| **Zona Baixa (Sub-torque)** | $< 1.600 \text{ RPM}$ | Indicador Cinza / Alerta de "Reduzir Marcha" | Evita cabeceamento do motor e estresse no virabrequim sob carga |
+| **Eco Sweet Spot (Perfeita)** | **$1.800 - 2.500 \text{ RPM}$** | **Glow Verde Neon Pulsante ("ECO SHIFT")** | Ponto de menor consumo específico de combustível (BSFC) |
+| **Faixa Neutra / Transição** | $2.500 - 3.800 \text{ RPM}$ | Barra Azul Ciano Estável | Condução urbana progressiva |
+| **Power Sweet Spot (Torque Máx)** | **$4.000 - 4.500 \text{ RPM}$** | **Glow Âmbar / Dourado Esportivo** | Ultrapassagens e subidas de serra (entrega máxima de torque) |
+| **Corte / Redline** | $> 5.800 \text{ RPM}$ | **Alerta Vermelho Flutuante ("SHIFT UP!")** | Proteção contra sobre-giro |
 
 ---
 
-## 4. Conexão Autônoma "Zero Preguiça" & Polling Adaptativo
+## 4. Especificação das Rotas Frequentes (Mapeamento Campinas & SP)
 
-### 4.1. O Ciclo de Vida da Conexão
-1. **Carro Desligado:** O pino 16 do OBD2 está desenergizado ou o adaptador entra em modo de repouso. O aplicativo entra em estado `IDLE_SCANNING`.
-2. **Backoff Inteligente:**
-   - Minuto 0 a 5 após sair do carro: escuta leve a cada 30 segundos;
-   - Minuto 5 a 30: escuta a cada 2 minutos;
-   - Acima de 30 minutos: ciclo de vigília a cada 5 a 10 minutos (poupando bateria do celular).
-3. **Entrada no Carro & Ignição:**
-   - O adaptador ELM327 energiza e começa a anunciar o broadcast Bluetooth (SPP/BLE);
-   - O app Android (via serviço nativo de segundo plano) detecta a presença do MAC address cadastrado;
-   - Dispara imediatamente o handshake silencioso (`ATZ` ➔ `ATSP6` ➔ `0100`);
-   - Transita para `CONNECTED_DRIVING` e inicia a gravação da telemetria da viagem.
-4. **Desconexão:** Ao desligar o motor e cessar o link, aguarda 45 segundos, salva a telemetria, sintetiza o resumo e notifica no smartphone:  
-   *“Chegada em Tetra Pak concluída: 18.4 km • 14.8 km/L • Custo: R$ 5,20 • EcoScore: 94”*.
+O condutor possui um conjunto finito e determinístico de trajetos mapeados:
 
----
+| ID POI | Ponto de Interesse (POI) | Endereço / Localização | Finalidade / Contexto |
+| :--- | :--- | :--- | :--- |
+| `POI_CASA` | **Casa** | Rua Padre Camargo de Lacerda, 400 - CEP 13070-277, Campinas | Ponto base de partida e descanso |
+| `POI_A2E` | **A2Z** | Valinhos / SP | Deslocamento centro 1 |
+| `POI_TRAPA` | **Tetra Pak ("Trapa")** | Monte Mor / Rod. Campinas-Monte Mor | Trabalho corporativo |
+| `POI_UNICAMP` | **Unicamp** | Barão Geraldo, Campinas | Universidade / Campus acadêmico |
+| `POI_TEXAS` | **Super Texas Carnes** | São Paulo / SP | Ponto de destino habitual (casa da sogra) |
+| `POI_FOZ_MAUA` | **Rua Foz do Iguaçu / Mauá** | Jardim Oratório, Mauá / SP | Perna familiar e pernoite |
 
-## 5. Módulo Financeiro: Auditoria de Abastecimento & Calibração
+### Matriz de Rotas Habitual:
+* **Rota 1:** `Casa ➔ A2Z (Valinhos)` | `A2Z ➔ Casa`
+* **Rota 2:** `Casa ➔ Tetra Pak (Monte Mor)` | `Tetra Pak ➔ Casa`
+* **Rota 3:** `Casa ➔ Unicamp (Barão Geraldo)` | `Unicamp ➔ Casa`
+* **Rota 4:** `Casa ➔ Super Texas Carnes (São Paulo)`
+* **Rota 5:** `Super Texas Carnes ➔ Rua Foz do Iguaçu (Mauá)`
+* **Rota 6:** `Mauá / São Paulo ➔ Casa (Campinas)`
 
-### 5.1. Fluxo de Entrada de Dados (Abastecimento)
-Ao abastecer, o condutor informa:
-- **Volume:** ex.: `40.0 Litros`
-- **Combustível:** `Etanol` ou `Gasolina`
-- **Preço por Litro:** ex.: `R$ 3,69`
-- **Odômetro no Painel:** ex.: `142.350 km`
-
-### 5.2. Conciliação Automática com a Injeção Eletrônica
-1. O app registra a data/hora e odômetro do abastecimento;
-2. Conforme o carro roda, o módulo [`TripComputer`](../js/trip.js) soma o consumo teórico Speed-Density:
-   $$\text{Litros Calculados} = \sum \left( \frac{\dot{m}_{\text{ar}}}{\text{AFR} \times \rho_{\text{combustível}}} \times \Delta t \right)$$
-3. No próximo abastecimento em tanque cheio, o sistema calcula o fator de desvio real:
-   $$\text{Fator de Calibração} = \frac{\text{Litros Reais da Bomba}}{\text{Litros Integrados pelo App}}$$
-4. O app atualiza automaticamente a variável `this.calibration` no `trip.js`, eliminando gradualmente o erro de medição para menos de 1,5%!
+### Geofencing Lógico Leve (Recomendação GPT-Sol):
+- Não sobrecarregar a bateria com serviços nativos pesados de geofencing.
+- Durante a viagem ativa, checar a posição GPS a cada 20-30 segundos e calcular a distância para os 6 POIs usando a fórmula de **Haversine**:
+  $$d = 2R \cdot \arcsin \left( \sqrt{\sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta \lambda}{2}\right)} \right)$$
+- **Critério de Chegada:** Distância $< 200\text{m}$ do POI por mais de 180 segundos com $\text{RPM} = 0$ e $\text{Velocidade} = 0 \rightarrow$ Encerra a Trip, arquiva no SQLite e emite notificação executiva.
 
 ---
 
-## 6. Métricas & KPIs de Gestão
+## 5. Conexão Autônoma "Zero Preguiça" & Máquina de Estados Finita
 
-### 6.1. Métricas de Viagem (Trip A e B)
-- **Trip A (Perna Atual):** Odômetro parcial, tempo em trânsito, tempo em marcha lenta (parado em semáforos), consumo instantâneo e médio, gasto em Reais ($\text{Litros} \times \text{Preço/L}$).
-- **Trip B (Consolidado do Tanque Atual / Semanal):** Quilometragem total rodada com o tanque, gasto acumulado, autonomia estimada restante baseada na taxa de consumo recente.
+Para eliminar bugs de sincronismo e drenagem de bateria, a arquitetura implementa a máquina de estados estrita recomendada pelo GPT-Sol:
 
-### 6.2. Métricas de Rotas Frequentes
-- **Custo Médio por Rota:** Quanto custa, em média, ir de *Casa até a Tetra Pak* ou até a *Unicamp* com Etanol vs Gasolina.
-- **Eficiência Comparativa de Horário:** Comparação entre o trajeto das 07:30 vs 08:30 (impacto do trânsito na perda de combustível por marcha lenta).
+```
+[IDLE_STANDBY]
+      │  (BT Áudio do Carro pareia OU ELM327 detectado)
+      ▼
+[CONNECTING] ──(Falha após 3 tentativas)──► [BACKOFF_SLEEP]
+      │  (Handshake ATZ -> ATSP6 -> 0100 OK)
+      ▼
+[CONNECTED]
+      │  (RPM > 300 detectado)
+      ▼
+[TRIP_ACTIVE] (Amostragem adaptativa: 1Hz dinâmica / 5s cruzeiro)
+      │  (RPM = 0 e Vel = 0 por > 180s próximo a POI)
+      ▼
+[PARKED_CONSOLIDATING] (Gera resumo financeiro, grava SQLite)
+      │
+      ▼
+[IDLE_STANDBY]
+```
 
-### 6.3. Métricas de Saúde & Manutenção Preventiva
-- **Temperatura Máxima do Motor por Trajeto:** Monitoramento de estresse térmico da válvula termostática e ventoinha no trânsito de Campinas.
-- **Saúde do Alternador & Bateria:** Tensão sob carga matinal (`ATRV`) registrando sinais precoces de degradação da bateria antes de falha de partida.
-- **Score de Desgaste (EcoScore):** Contagem de acelerações bruscas ($> 12 \text{ km/h/s}$) e frenagens fortes ($< -15 \text{ km/h/s}$) para preservação de pastilhas e pneus.
+### Backoff Inteligente de Energia:
+- **0 a 5 min após desligar:** Escuta a cada 30 segundos;
+- **5 a 30 min:** Escuta a cada 5 minutos;
+- **Acima de 30 min:** Modo *Deep Sleep* com verificação a cada 15-20 minutos (consumo < 0.2% de bateria/hora).
 
 ---
 
-## 7. Próximos Passos de Engenharia
+## 6. Módulo Financeiro: Auditoria de Abastecimento & Calibração em Malha Fechada
 
-1. **Camada de Localização (GPS Geofencing):** Integrar API de geolocalização nativa para identificação automática dos POIs de Campinas.
-2. **Serviço de Segundo Plano no Android (Capacitor Background Runner / Bluetooth Scanner):** Permitir o pareamento autônomo sem necessidade de abrir a tela do app.
-3. **Módulo de Armazenamento Local IndexedDB:** Persistência de histórico de todas as viagens com exportação JSON/CSV.
-4. **Interface de Abastecimento Rápido:** Tela com botões rápidos (Tanque Cheio, 20L, 30L, 40L, Etanol/Gasolina).
+### 6.1. Formulário de Abastecimento Rápido (Interface One-Tap)
+- **Atalhos Rápidos de Volume:** `[Tanque Cheio]` • `[20 Litros]` • `[35 Litros]` • `[40 Litros]` • `[Campo Livre]`;
+- **Seletor de Combustível:** `Etanol (R$ 3,50/L)` | `Gasolina (R$ 5,89/L)`;
+- **Odômetro no Painel:** Registro base (ex: `132.350 km`).
+
+### 6.2. Algoritmo de Calibração Seguro (Aprovado pelo GPT-Sol)
+Para não descalibrar a física do motor com ruídos de temperatura ou enchimento de gargalo:
+1. **Regra de Ouro:** A recalibração automática só é disparada em abastecimentos com volume $> 15 \text{ Litros}$;
+2. **Isolamento de $\eta_v$:** Mantém a eficiência volumétrica base do motor D4D estável ($\eta_v = 0.80$) e ajusta exclusivamente o fator global de correção de combustível (`fuelCorrectionFactor`):
+   $$\text{fuelCorrectionFactor}_{\text{novo}} = \text{fuelCorrectionFactor}_{\text{atual}} \times \left( \frac{\text{Litros Reais da Bomba}}{\text{Litros Integrados pelo App}} \right)$$
+3. **Filtro de Amortecimento:** Aplica média ponderada exponencial ($90\%$ histórico / $10\%$ novo tanque) para evitar que um bico de posto descalibrado distorça as médias anteriores.
+
+---
+
+## 7. Esquema do Banco de Dados Relacional (SQLite)
+
+Conforme orientação do GPT-Sol, o armazenamento migrará de localStorage para **SQLite estruturado** via plugin Capacitor:
+
+```sql
+-- Viagens Consolidadas
+CREATE TABLE trips (
+    id TEXT PRIMARY KEY,
+    start_time INTEGER NOT NULL,
+    end_time INTEGER,
+    origin_poi_id TEXT,
+    destination_poi_id TEXT,
+    distance_km REAL DEFAULT 0,
+    duration_minutes REAL DEFAULT 0,
+    fuel_consumed_liters REAL DEFAULT 0,
+    cost_reais REAL DEFAULT 0,
+    avg_speed REAL DEFAULT 0,
+    max_speed REAL DEFAULT 0,
+    eco_score INTEGER DEFAULT 100,
+    hard_accels INTEGER DEFAULT 0,
+    hard_brakes INTEGER DEFAULT 0,
+    idle_time_seconds INTEGER DEFAULT 0
+);
+
+-- Amostras de Telemetria (Amostragem Adaptativa)
+CREATE TABLE telemetry_samples (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id TEXT REFERENCES trips(id),
+    timestamp INTEGER NOT NULL,
+    rpm INTEGER,
+    speed INTEGER,
+    map_kpa INTEGER,
+    iat_celsius INTEGER,
+    coolant_temp INTEGER,
+    instant_kml REAL,
+    lat REAL,
+    lng REAL
+);
+
+-- Registro de Abastecimentos e Calibração
+CREATE TABLE fuelings (
+    id TEXT PRIMARY KEY,
+    date INTEGER NOT NULL,
+    odometer_km REAL NOT NULL,
+    liters REAL NOT NULL,
+    price_per_liter REAL NOT NULL,
+    fuel_type TEXT NOT NULL,
+    is_full_tank BOOLEAN DEFAULT 1,
+    app_estimated_liters REAL,
+    applied_correction_factor REAL
+);
+
+-- Catálogo de Pontos de Interesse (POIs)
+CREATE TABLE pois (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    radius_meters INTEGER DEFAULT 200
+);
+```
+
+---
+
+## 8. Cronograma de Implementação Imediata
+
+1. **Sprint 1 (Condução NFS & Interface de Abastecimento):**
+   - Implementar o *Need for Speed Shift Light* no cockpit com faixas para motor Renault D4D 16V (1.800-2.500 RPM Eco / 4.000-4.500 RPM Power).
+   - Criar modal de registro rápido de abastecimento com botões `20L`, `35L`, `40L`, `Tanque Cheio` e preços pré-definidos (R$ 3,50 / R$ 5,89).
+2. **Sprint 2 (POIs e Geofencing Haversine):**
+   - Criar catálogo `js/routes/poi-manager.js` com os 6 pontos definidos (Chapadão, Valinhos, Monte Mor, Barão Geraldo, Mauá, SP).
+   - Implementar monitor de aproximação Haversine integrado ao loop de telemetria.
+3. **Sprint 3 (SQLite & Máquina de Estados):**
+   - Configurar o `@capacitor-community/sqlite` para gravação de histórico de viagens e abastecimentos.
+   - Implementar a Máquina de Estados Finita e o Foreground Service com trigger de Bluetooth de áudio do carro.
