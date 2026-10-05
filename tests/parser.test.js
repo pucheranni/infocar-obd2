@@ -278,4 +278,77 @@ test('Trip: registerFueling parcial (< 15L ou isFullTank=false) não recalibra f
   }
 });
 
+// ---------------------------------------------------------------- POI & Geofencing Routes
+import { POIManager, POI_CATALOG, haversineDistanceKm } from '../js/routes/poi-manager.js';
+
+test('POI: haversineDistanceKm calcula distância geodésica com precisão', () => {
+  // Casa Chapadão (-22.8935, -47.0780) até Tetra Pak Monte Mor (-22.9350, -47.2800)
+  const dist = haversineDistanceKm(-22.8935, -47.0780, -22.9350, -47.2800);
+  // Distância em linha reta ~21.2 km
+  assert.ok(dist > 20.0 && dist < 22.0, `Distância calculada foi ${dist} km`);
+});
+
+test('POI: detecta origem ao estar dentro do raio e ignora posições fora do raio', () => {
+  const manager = new POIManager();
+  
+  // Coordenada a ~30m de Casa Chapadão
+  manager.updateLocation(-22.8936, -47.0781);
+  assert.equal(manager.originPOI.id, 'POI_CASA');
+  assert.equal(manager.activeRouteName, 'Casa ➔ Destino');
+
+  // Ponto no meio da rodovia (fora de qualquer POI)
+  const nearest = manager.findNearestPOI(-22.9100, -47.1500);
+  assert.equal(nearest, null);
+});
+
+test('POI: LKGP (Last Known Good Position) respeita janela de 120s em movimento e 300s parado', () => {
+  const manager = new POIManager();
+  manager.updateLocation(-22.8935, -47.0780);
+  
+  // Imediatamente disponível
+  assert.ok(manager.getEffectiveLocation(true));
+  assert.ok(manager.getEffectiveLocation(false));
+
+  // Simulando avanço temporal de 150 segundos
+  manager.lastPositionTimestamp = Date.now() - 150000;
+  // Em movimento (>120s) deve expirar (retorna null)
+  assert.equal(manager.getEffectiveLocation(true), null);
+  // Parado (<300s) ainda deve ser válido
+  assert.ok(manager.getEffectiveLocation(false));
+
+  // Simulando avanço temporal de 350 segundos
+  manager.lastPositionTimestamp = Date.now() - 350000;
+  // Parado (>300s) também expira
+  assert.equal(manager.getEffectiveLocation(false), null);
+});
+
+test('POI: checkArrival detecta chegada somente após 180s parado no raio do destino com RPM=0', () => {
+  const manager = new POIManager();
+  // Inicia viagem em Casa
+  manager.updateLocation(-22.8935, -47.0780);
+  assert.equal(manager.originPOI.id, 'POI_CASA');
+
+  // Chega na Tetra Pak Monte Mor
+  manager.updateLocation(-22.9350, -47.2800);
+
+  // Parou agora (0s) -> ainda não confirma chegada
+  const arr0 = manager.checkArrival(0, 0);
+  assert.equal(arr0, null);
+
+  // Simula 100 segundos parado -> ainda não confirma
+  manager.stoppedAtPoiStartTime = Date.now() - 100000;
+  const arr100 = manager.checkArrival(0, 0);
+  assert.equal(arr100, null);
+
+  // Simula 185 segundos parado -> confirma chegada na Tetra Pak!
+  manager.stoppedAtPoiStartTime = Date.now() - 185000;
+  const arrival = manager.checkArrival(0, 0);
+  assert.ok(arrival);
+  assert.equal(arrival.origin, 'Casa');
+  assert.equal(arrival.destination, 'Tetra Pak');
+  assert.equal(arrival.routeId, 'POI_CASA->POI_TRAPA');
+  assert.equal(manager.activeRouteName, 'Casa ➔ Tetra Pak');
+});
+
+
 

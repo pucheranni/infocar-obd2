@@ -4,12 +4,14 @@ import { TripComputer } from './trip.js';
 import { lookupDTC } from './obd/dtc-db.js';
 import { listPairedDevices, isBtClassicAvailable } from './obd/transports/bt-classic.js';
 import { ShiftCoach } from './obd/shift-coach.js';
+import { POIManager } from './routes/poi-manager.js';
 
 class AutoPulseApp {
   constructor() {
     this.client = new ELM327Client();
     this.trip = new TripComputer();
     this.shiftCoach = new ShiftCoach();
+    this.poiManager = new POIManager();
     this.currentView = 'dashboard';
     this.isHUD = false;
     this.isHUDMirrored = false;
@@ -20,6 +22,7 @@ class AutoPulseApp {
     this.initDOM();
     this.setupEventListeners();
     this.setupOBDCallbacks();
+    this.initGeolocation();
     this.registerPWA();
 
     // Restaura ajustes salvos. O app NÃO conecta sozinho: o simulador é um modo explícito
@@ -58,6 +61,12 @@ class AutoPulseApp {
     this.modalFuel = document.getElementById('modal-fuel');
     this.btnOpenFuelModal = document.getElementById('btn-open-fuel-modal');
     this.btnCloseFuelModal = document.getElementById('btn-close-fuel-modal');
+
+    // Route & POI Semantic Elements
+    this.activeRouteName = document.getElementById('active-route-name');
+    this.activeRouteStatus = document.getElementById('active-route-status');
+    this.tripDetectedRoute = document.getElementById('trip-detected-route');
+    this.tripPoiBadge = document.getElementById('trip-poi-badge');
     this.btnSaveFuel = document.getElementById('btn-save-fuel');
     this.fuelPresetBtns = document.querySelectorAll('.fuel-preset-btn');
     this.fuelTypeBtns = document.querySelectorAll('.fuel-type-btn');
@@ -282,7 +291,9 @@ class AutoPulseApp {
     const resetLabel = this.btnResetTrip.innerHTML;
     this.btnResetTrip.addEventListener('click', () => {
       this.trip.reset();
+      this.poiManager.resetTrip();
       this.updateTripUI();
+      this.updateRouteUI();
       this.btnResetTrip.innerText = '✓ Viagem zerada!';
       setTimeout(() => { this.btnResetTrip.innerHTML = resetLabel; }, 1500);
     });
@@ -423,6 +434,13 @@ class AutoPulseApp {
         throttlePos: data.throttlePos
       });
       this.updateTripUI();
+
+      // Check POI arrival
+      const arrival = this.poiManager.checkArrival(data.rpm, data.speed);
+      if (arrival) {
+        this.appendTerminalLog(`[ROTA] Chegada detectada em ${arrival.destination}! Rota: ${arrival.routeName}`, 'success');
+      }
+      this.updateRouteUI();
     };
 
     // DTC received
@@ -853,6 +871,50 @@ class AutoPulseApp {
     line.innerText = text;
     this.terminalOutput.appendChild(line);
     this.terminalOutput.scrollTop = this.terminalOutput.scrollHeight;
+  }
+
+  initGeolocation() {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      try {
+        this.geoWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            this.poiManager.updateLocation(pos.coords.latitude, pos.coords.longitude);
+            if (this.activeRouteStatus) this.activeRouteStatus.innerText = 'GPS ATIVO';
+            this.updateRouteUI();
+          },
+          (err) => {
+            if (this.activeRouteStatus) this.activeRouteStatus.innerText = 'GPS OFF';
+          },
+          { enableHighAccuracy: true, maximumAge: 30000, timeout: 27000 }
+        );
+      } catch (e) {
+        console.warn('Falha ao iniciar geolocalização:', e);
+      }
+    }
+  }
+
+  updateRouteUI() {
+    const name = this.poiManager.activeRouteName;
+    if (this.activeRouteName) this.activeRouteName.innerText = name;
+    if (this.tripDetectedRoute) this.tripDetectedRoute.innerText = name;
+    
+    const origin = this.poiManager.originPOI;
+    const dest = this.poiManager.destinationPOI;
+    if (this.tripPoiBadge) {
+      if (dest) {
+        this.tripPoiBadge.innerText = 'CHEGADA CONFIRMADA';
+        this.tripPoiBadge.style.color = 'var(--accent-green)';
+        this.tripPoiBadge.style.borderColor = 'var(--accent-green)';
+      } else if (origin) {
+        this.tripPoiBadge.innerText = `EM ROTA: ${origin.name}`;
+        this.tripPoiBadge.style.color = '#93c5fd';
+        this.tripPoiBadge.style.borderColor = '#3775BA';
+      } else {
+        this.tripPoiBadge.innerText = 'CAMPINAS / SP';
+        this.tripPoiBadge.style.color = '#93c5fd';
+        this.tripPoiBadge.style.borderColor = '#3775BA';
+      }
+    }
   }
 
   registerPWA() {

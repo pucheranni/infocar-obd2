@@ -1196,3 +1196,64 @@ body.hud-active .hud-exit-btn {
 .form-select:focus, .form-input:focus {
   border-color: var(--accent-cyan);
 }
+
+/* Semantic Route & POI Banners */
+.route-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.route-info-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.route-pin-icon {
+  font-size: 1.35rem;
+}
+
+.route-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.route-label-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.route-name-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.route-status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(15, 77, 146, 0.25);
+  border: 1px solid #3775BA;
+  color: #93c5fd;
+  letter-spacing: 0.05em;
+}
+
+.trip-route-card {
+  margin-bottom: 16px;
+}
+

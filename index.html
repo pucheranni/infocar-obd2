@@ -98,6 +98,18 @@
             </div>
           </div>
 
+          <!-- Detected Route Indicator -->
+          <div class="route-banner" id="dashboard-route-banner">
+            <div class="route-info-group">
+              <span class="route-pin-icon">🧭</span>
+              <div class="route-text-group">
+                <span class="route-label-sub">ROTA DETECTADA</span>
+                <span id="active-route-name" class="route-name-title">Rotas da Cidade</span>
+              </div>
+            </div>
+            <span id="active-route-status" class="route-status-pill">GPS ATIVO</span>
+          </div>
+
           <!-- Primary Circular Gauges -->
           <div class="gauges-row">
             <!-- Speedometer -->
@@ -295,6 +307,18 @@
       <!-- TAB 3: COMPUTADOR DE BORDO & CONSUMO -->
       <section id="view-trip" class="view-section">
         <div class="trip-container">
+          <!-- Semantic Route Banner -->
+          <div class="route-banner trip-route-card" id="trip-route-banner">
+            <div class="route-info-group">
+              <span class="route-pin-icon">📍</span>
+              <div class="route-text-group">
+                <span class="route-label-sub">ROTA SEMÂNTICA</span>
+                <span id="trip-detected-route" class="route-name-title">Rotas da Cidade</span>
+              </div>
+            </div>
+            <span id="trip-poi-badge" class="route-status-pill">CAMPINAS / SP</span>
+          </div>
+
           <!-- Eco Score Card -->
           <div class="eco-banner">
             <div>
