@@ -5,7 +5,7 @@ export class TripComputer {
     this.fuelType = 'gasoline';   // 'gasoline' (E27), 'ethanol' (E100 hidratado) ou 'mix'
     this.ethanolMix = 0.5;        // fração de etanol hidratado no tanque quando fuelType = 'mix'
     this.displacementL = 1.0;     // Clio 2011 1.0 16V Hi-Flex (D4D). Use 1.6 para o K4M.
-    this.volumetricEff = 0.85;    // Eficiência volumétrica média de um 16V aspirado
+    this.volumetricEff = 0.80;    // Eficiência volumétrica média Renault D4D 1.0 16V aspirado
     this.calibration = 1.0;       // Ajuste do usuário (litros bomba ÷ litros app)
     this.airSource = '---';       // 'MAF' | 'MAP' | 'RPM' (estimativa)
     
@@ -72,17 +72,27 @@ export class TripComputer {
   }
 
   // Massa de ar admitida (g/s). O Clio 2011 não tem MAF: usa speed-density com MAP + IAT.
-  estimateAirMass(maf, rpm, extra) {
-    if (maf && maf > 0) { this.airSource = 'MAF'; return maf; }
+  estimateAirMass(maf, rpm, extra = {}) {
+    if (!rpm || rpm < 300) {
+      this.airSource = '---';
+      return 0;
+    }
+    if (maf && maf > 0) {
+      this.airSource = 'MAF';
+      return maf;
+    }
     const map = extra.map;
-    if (map && map > 0 && rpm > 0) {
+    if (map && map > 0) {
       this.airSource = 'MAP';
       const iatK = (extra.intakeTemp ?? 30) + 273.15;
       // m = P·V/(R·T) por ciclo [kPa·L = J; R_ar = 0,287 J/(g·K)] × ciclos/s (4 tempos = rpm/120)
       return (map * this.displacementL * this.volumetricEff) / (0.287 * iatK) * (rpm / 120);
     }
+    // Fallback por RPM e Carga (quando não há MAF nem MAP)
     this.airSource = 'RPM';
-    return Math.max(1.0, (rpm * this.displacementL * 0.5) / 60);
+    const estMap = extra.engineLoad ? (extra.engineLoad * 0.7 + 30) : 40;
+    const estIatK = (extra.intakeTemp ?? 30) + 273.15;
+    return (estMap * this.displacementL * this.volumetricEff) / (0.287 * estIatK) * (rpm / 120);
   }
 
   update(speed, maf, rpm, extra = {}) {
@@ -97,15 +107,19 @@ export class TripComputer {
     // Ignora lacunas longas (ex.: link caído) para não "inventar" distância/combustível
     const dtSeconds = (rawDt > 0 && rawDt < 5) ? rawDt : 0;
 
+    const isEngineRunning = rpm >= 300;
+
     // Max speed
     if (speed > this.maxSpeed) this.maxSpeed = speed;
 
-    // Average speed
-    this.speedSum += speed;
-    this.speedSamples++;
+    // Average speed (apenas com motor funcionando ou em movimento)
+    if (speed > 0 || isEngineRunning) {
+      this.speedSum += speed;
+      this.speedSamples++;
+    }
 
     // Distância percorrida: velocidade média do trecho * tempo
-    if (dtSeconds > 0) {
+    if (dtSeconds > 0 && speed > 0) {
       const avgChunkSpeed = (speed + this.lastSpeed) / 2;
       this.distanceKm += avgChunkSpeed * (dtSeconds / 3600);
     }
@@ -119,12 +133,12 @@ export class TripComputer {
         if (dtChange >= 0.3 && dtChange < 3.0) {
           const accelRate = (speed - this.lastSpeedChangeValue) / dtChange; // (km/h)/s
 
-          // Hard acceleration > 12 km/h per second
+          // Hard acceleration > 12 km/h por segundo
           if (accelRate > 12) {
             this.hardAccelerations++;
             this.ecoScore = Math.max(30, this.ecoScore - 2);
           }
-          // Hard braking < -15 km/h per second
+          // Hard braking < -15 km/h por segundo
           if (accelRate < -15) {
             this.hardBrakings++;
             this.ecoScore = Math.max(30, this.ecoScore - 2);
@@ -136,6 +150,13 @@ export class TripComputer {
     }
 
     this.lastSpeed = speed;
+
+    // Se o motor estiver desligado (rpm < 300), zera vazão e não queima combustível
+    if (!isEngineRunning) {
+      this.instantLitersPerHour = 0;
+      this.instantKmPerLiter = 0;
+      return this.getSummary();
+    }
 
     const { afr, density } = this.getFuelProps();
     const air = this.estimateAirMass(maf, rpm, extra);
@@ -152,16 +173,18 @@ export class TripComputer {
       : (air / afr * trim / density) * 3600 * this.calibration;
 
     if (speed > 3) {
-      // km/L = (km/h) / (L/h); em cut-off mostra o teto
+      // km/L = (km/h) / (L/h); em cut-off mostra o teto (45 km/L)
       this.instantKmPerLiter = this.instantLitersPerHour > 0
         ? Math.min(45, Math.max(0.5, speed / this.instantLitersPerHour))
         : 45;
     } else {
-      this.instantKmPerLiter = 0; // idling in place (show L/h)
+      this.instantKmPerLiter = 0; // parado / marcha lenta: km/L é 0, UI exibe L/h
     }
 
-    // Acumula combustível pelo tempo real decorrido
-    this.fuelConsumedLiters += (this.instantLitersPerHour / 3600) * dtSeconds;
+    // Acumula combustível pelo tempo real decorrido (apenas com motor funcionando)
+    if (dtSeconds > 0 && this.instantLitersPerHour > 0) {
+      this.fuelConsumedLiters += (this.instantLitersPerHour / 3600) * dtSeconds;
+    }
 
     return this.getSummary();
   }
@@ -171,8 +194,10 @@ export class TripComputer {
   }
 
   getAverageFuelEconomy() {
-    if (this.fuelConsumedLiters > 0.01 && this.distanceKm > 0.05) {
-      return Math.round((this.distanceKm / this.fuelConsumedLiters) * 10) / 10;
+    // Requer pelo menos 150m e 10ml consumidos para evitar distorção inicial
+    if (this.distanceKm >= 0.15 && this.fuelConsumedLiters >= 0.01) {
+      const avg = this.distanceKm / this.fuelConsumedLiters;
+      return Math.round(Math.min(45.0, Math.max(1.0, avg)) * 10) / 10;
     }
     return 0;
   }
@@ -197,7 +222,7 @@ export class TripComputer {
       distanceKm: this.distanceKm.toFixed(1),
       avgSpeed: this.getAverageSpeed(),
       maxSpeed: Math.round(this.maxSpeed),
-      instantKmPerLiter: this.instantKmPerLiter.toFixed(1),
+      instantKmPerLiter: this.instantKmPerLiter > 0 ? this.instantKmPerLiter.toFixed(1) : '0.0',
       instantLitersPerHour: this.instantLitersPerHour.toFixed(1),
       avgKmPerLiter: this.getAverageFuelEconomy(),
       fuelConsumedLiters: this.fuelConsumedLiters.toFixed(2),

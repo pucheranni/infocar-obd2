@@ -27,11 +27,10 @@ export const VEHICLE_PROFILES = {
       'ATL0',
       'ATS1',
       'ATH0',      // Sem headers nos dados para máxima velocidade
-      'ATSP6',     // Forçar ISO 15765-4 CAN 11bit 500k
-      'ATSH7E0',   // Header da ECU do motor
+      'ATSP6',     // Forçar ISO 15765-4 CAN 11bit 500k (broadcast 7DF padrão)
       'ATCAF1',    // CAN Auto Formatting
       'ATAT1',     // Adaptive Timing Auto 1
-      'ATST32'     // Timeout agressivo (~128ms) para telemetria rápida
+      'ATST64'     // Timeout seguro (~400ms) para acomodar latência Bluetooth sem perder pacotes
     ],
     // RPM/MAP/velocidade/TPS a cada volta (base do consumo); demais intercalados
     pidsToPoll: [
@@ -116,6 +115,8 @@ export class ELM327Client {
     this.isPolling = false;
     this.pidsToPoll = [...VEHICLE_PROFILES.clio2011_can.pidsToPoll];
     this.unsupportedPids = new Set();
+    this.ecuSupportedPids = new Set();
+    this.noDataCount = {};
     this.pollIndex = 0;
     
     // Vehicle & ECU state
@@ -165,6 +166,7 @@ export class ELM327Client {
     this.buffer = '';
     this.commandQueue = [];
     this.unsupportedPids = new Set();
+    this.ecuSupportedPids = new Set();
     this.noDataCount = {};
     this.pollIndex = 0;
 
@@ -271,6 +273,7 @@ export class ELM327Client {
     // Testa comunicação inicial com a ECU solicitando PIDs Suportados (0100)
     const pidsResp = await this.executeCommand('0100', 8000);
     this.log(`Resposta ECU PIDs: ${pidsResp}`, 'info');
+    this.parseSupportedPIDs(pidsResp);
 
     // Consulta protocolo ativo no ELM327
     const protoResp = await this.executeCommand('ATDP', 1000);
@@ -430,16 +433,33 @@ export class ELM327Client {
 
     // Check for Mode 01 response (starts with 41)
     if (cmd.startsWith('01') && /NO DATA/i.test(cleaned) && this.isPolling) {
-      // PID não suportado pela ECU: tira do polling depois de algumas falhas
+      // Se a ECU já confirmou suporte em 0100, NUNCA remove da leitura (foi apenas perda temporária de pacote no Bluetooth)
+      if (this.ecuSupportedPids && this.ecuSupportedPids.has(cmd)) {
+        return;
+      }
+      // PIDs essenciais de telemetria e injeção protegidos contra drop
+      const protectedPids = ['010C', '010D', '010B', '0105', '0111', '0104', '0106', '0107', '010F'];
+      if (protectedPids.includes(cmd)) {
+        return;
+      }
+
       this.noDataCount = this.noDataCount || {};
       this.noDataCount[cmd] = (this.noDataCount[cmd] || 0) + 1;
-      if (this.noDataCount[cmd] >= 3 && !['010C', '010D'].includes(cmd)) {
+      if (this.noDataCount[cmd] >= 5) {
         this.unsupportedPids.add(cmd);
         this.log(`PID ${cmd} não suportado pela ECU — removido da leitura.`, 'warn');
       }
       return;
     }
+
     if (cmd.startsWith('01') && cleaned.includes('41')) {
+      // Resposta bem-sucedida: reseta contador de falhas do PID
+      if (this.noDataCount && this.noDataCount[cmd]) {
+        this.noDataCount[cmd] = 0;
+      }
+      if (cmd === '0100' || cmd === '01 00') {
+        this.parseSupportedPIDs(cleaned);
+      }
       const lines = cleaned.split(/[\r\n]+/);
       for (const line of lines) {
         const tokens = line.trim().split(/\s+/);
@@ -533,6 +553,47 @@ export class ELM327Client {
     }
 
     this.notifyUpdate();
+  }
+
+  // Decodifica a máscara de bits do PID 0100 para registrar os PIDs suportados pela ECU
+  parseSupportedPIDs(response) {
+    if (!response) return;
+    const clean = response.replace(/[\r\n>]/g, ' ').replace(/SEARCHING\.\.\.?/gi, ' ').trim();
+    const tokens = clean.split(/\s+/).filter(Boolean);
+    const idx = tokens.indexOf('41');
+    if (idx !== -1 && tokens[idx + 1] === '00' && tokens.length >= idx + 6) {
+      const bytes = tokens.slice(idx + 2, idx + 6).map(t => parseInt(t, 16)).filter(n => !isNaN(n));
+      if (bytes.length === 4) {
+        for (let byteIdx = 0; byteIdx < 4; byteIdx++) {
+          const byteVal = bytes[byteIdx];
+          for (let bit = 0; bit < 8; bit++) {
+            if ((byteVal & (0x80 >> bit)) !== 0) {
+              const pidNum = (byteIdx * 8) + bit + 1;
+              const pidHex = '01' + pidNum.toString(16).toUpperCase().padStart(2, '0');
+              this.ecuSupportedPids.add(pidHex);
+            }
+          }
+        }
+        this.log(`PIDs suportados pela ECU detectados: ${this.ecuSupportedPids.size} PIDs`, 'info');
+        return;
+      }
+    }
+    // Formato sem separação de espaço (ex.: 4100BE3EB811)
+    const match = clean.match(/4100([0-9A-F]{8})/i);
+    if (match) {
+      const hex = match[1];
+      for (let byteIdx = 0; byteIdx < 4; byteIdx++) {
+        const byteVal = parseInt(hex.substr(byteIdx * 2, 2), 16);
+        for (let bit = 0; bit < 8; bit++) {
+          if ((byteVal & (0x80 >> bit)) !== 0) {
+            const pidNum = (byteIdx * 8) + bit + 1;
+            const pidHex = '01' + pidNum.toString(16).toUpperCase().padStart(2, '0');
+            this.ecuSupportedPids.add(pidHex);
+          }
+        }
+      }
+      this.log(`PIDs suportados pela ECU detectados: ${this.ecuSupportedPids.size} PIDs`, 'info');
+    }
   }
 
   // Extrai a lista de DTCs de uma resposta de modo 03 (confirmados) ou 07 (pendentes)

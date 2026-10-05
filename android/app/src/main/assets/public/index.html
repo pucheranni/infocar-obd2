@@ -96,6 +96,36 @@
 
           <!-- Secondary Telemetry Sensors -->
           <div class="telemetry-grid">
+            <!-- Consumo Instantâneo (km/L ou L/h quando parado) -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Consumo Inst.</span>
+                <span class="sensor-icon">⚡</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-instant-fuel" class="sensor-val">--</span>
+                <span id="unit-instant-fuel" class="sensor-unit">km/L</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-instant-fuel" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Consumo Médio -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Consumo Médio</span>
+                <span class="sensor-icon">📊</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-avg-fuel" class="sensor-val">--</span>
+                <span class="sensor-unit">km/L</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-avg-fuel" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
             <!-- Coolant Temp -->
             <div class="sensor-card">
               <div class="sensor-header">
@@ -108,36 +138,6 @@
               </div>
               <div class="sensor-bar">
                 <div id="bar-coolant" class="sensor-bar-fill"></div>
-              </div>
-            </div>
-
-            <!-- Engine Load -->
-            <div class="sensor-card">
-              <div class="sensor-header">
-                <span class="sensor-title">Carga Motor</span>
-                <span class="sensor-icon">⚙️</span>
-              </div>
-              <div class="sensor-value-group">
-                <span id="val-load" class="sensor-val">--</span>
-                <span class="sensor-unit">%</span>
-              </div>
-              <div class="sensor-bar">
-                <div id="bar-load" class="sensor-bar-fill"></div>
-              </div>
-            </div>
-
-            <!-- Throttle Position -->
-            <div class="sensor-card">
-              <div class="sensor-header">
-                <span class="sensor-title">Acelerador (TPS)</span>
-                <span class="sensor-icon">🏎️</span>
-              </div>
-              <div class="sensor-value-group">
-                <span id="val-throttle" class="sensor-val">--</span>
-                <span class="sensor-unit">%</span>
-              </div>
-              <div class="sensor-bar">
-                <div id="bar-throttle" class="sensor-bar-fill"></div>
               </div>
             </div>
 
@@ -156,10 +156,25 @@
               </div>
             </div>
 
-            <!-- MAF Sensor -->
+            <!-- Engine Load -->
             <div class="sensor-card">
               <div class="sensor-header">
-                <span class="sensor-title">Pressão Coletor (MAP)</span>
+                <span class="sensor-title">Carga Motor</span>
+                <span class="sensor-icon">⚙️</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-load" class="sensor-val">--</span>
+                <span class="sensor-unit">%</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-load" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Pressão Coletor (MAP) -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Pressão (MAP)</span>
                 <span class="sensor-icon">💨</span>
               </div>
               <div class="sensor-value-group">
@@ -168,6 +183,21 @@
               </div>
               <div class="sensor-bar">
                 <div id="bar-maf" class="sensor-bar-fill"></div>
+              </div>
+            </div>
+
+            <!-- Distância Viagem -->
+            <div class="sensor-card">
+              <div class="sensor-header">
+                <span class="sensor-title">Distância Viagem</span>
+                <span class="sensor-icon">📍</span>
+              </div>
+              <div class="sensor-value-group">
+                <span id="val-trip-dist" class="sensor-val">0.0</span>
+                <span class="sensor-unit">km</span>
+              </div>
+              <div class="sensor-bar">
+                <div id="bar-trip-dist" class="sensor-bar-fill"></div>
               </div>
             </div>
 

@@ -45,6 +45,13 @@ class AutoPulseApp {
     this.rpmProgress = document.getElementById('rpm-progress');
 
     // Sensors
+    this.valInstantFuel = document.getElementById('val-instant-fuel');
+    this.unitInstantFuel = document.getElementById('unit-instant-fuel');
+    this.barInstantFuel = document.getElementById('bar-instant-fuel');
+    this.valAvgFuel = document.getElementById('val-avg-fuel');
+    this.barAvgFuel = document.getElementById('bar-avg-fuel');
+    this.valTripDist = document.getElementById('val-trip-dist');
+    this.barTripDist = document.getElementById('bar-trip-dist');
     this.valCoolant = document.getElementById('val-coolant');
     this.barCoolant = document.getElementById('bar-coolant');
     this.valLoad = document.getElementById('val-load');
@@ -532,9 +539,11 @@ class AutoPulseApp {
     this.valLoad.innerText = data.engineLoad;
     this.barLoad.style.width = `${data.engineLoad}%`;
 
-    // Throttle TPS (0 - 100%)
-    this.valThrottle.innerText = data.throttlePos;
-    this.barThrottle.style.width = `${data.throttlePos}%`;
+    // Throttle TPS (se presente no layout)
+    if (this.valThrottle) {
+      this.valThrottle.innerText = data.throttlePos;
+      if (this.barThrottle) this.barThrottle.style.width = `${data.throttlePos}%`;
+    }
 
     // Voltage (9 - 16 V)
     const volt = data.voltage || 0;
@@ -571,17 +580,69 @@ class AutoPulseApp {
 
   updateTripUI() {
     const summary = this.trip.getSummary();
-    this.tripEcoScore.innerText = summary.ecoScore;
-    this.tripInstantKml.innerText = summary.instantKmPerLiter;
+    const speed = this.client.vehicleData.speed || 0;
+    const isRunning = (this.client.vehicleData.rpm || 0) >= 300;
+
+    // Atualiza cards de consumo no Dashboard Cockpit principal
+    if (this.valInstantFuel && this.unitInstantFuel) {
+      if (!isRunning) {
+        this.valInstantFuel.innerText = '--';
+        this.unitInstantFuel.innerText = 'km/L';
+        if (this.barInstantFuel) this.barInstantFuel.style.width = '0%';
+      } else if (speed <= 3) {
+        // Parado ou marcha lenta: exibe vazão horária em L/h
+        const lh = parseFloat(summary.instantLitersPerHour) || 0;
+        this.valInstantFuel.innerText = lh > 0 ? lh.toFixed(1) : '0.0';
+        this.unitInstantFuel.innerText = 'L/h';
+        if (this.barInstantFuel) {
+          const pct = Math.min(100, Math.max(0, (lh / 4) * 100));
+          this.barInstantFuel.style.width = `${pct}%`;
+          this.barInstantFuel.style.background = 'var(--accent-cyan)';
+        }
+      } else {
+        // Em movimento: exibe eficiência instantânea em km/L
+        const kml = parseFloat(summary.instantKmPerLiter) || 0;
+        this.valInstantFuel.innerText = kml > 0 ? kml.toFixed(1) : '--';
+        this.unitInstantFuel.innerText = 'km/L';
+        if (this.barInstantFuel) {
+          const pct = Math.min(100, Math.max(0, (kml / 25) * 100));
+          this.barInstantFuel.style.width = `${pct}%`;
+          this.barInstantFuel.style.background = kml >= 12 ? 'var(--accent-green)' : (kml >= 8 ? 'var(--accent-cyan)' : 'var(--accent-yellow)');
+        }
+      }
+    }
+
+    if (this.valAvgFuel) {
+      const avg = summary.avgKmPerLiter;
+      this.valAvgFuel.innerText = avg > 0 ? avg.toFixed(1) : '--';
+      if (this.barAvgFuel) {
+        const pct = Math.min(100, Math.max(0, (avg / 25) * 100));
+        this.barAvgFuel.style.width = `${pct}%`;
+        this.barAvgFuel.style.background = avg >= 12 ? 'var(--accent-green)' : (avg >= 8 ? 'var(--accent-cyan)' : 'var(--accent-yellow)');
+      }
+    }
+
+    if (this.valTripDist) {
+      this.valTripDist.innerText = summary.distanceKm;
+      if (this.barTripDist) {
+        const distNum = parseFloat(summary.distanceKm) || 0;
+        const pct = Math.min(100, (distNum % 50) * 2);
+        this.barTripDist.style.width = `${pct}%`;
+      }
+    }
+
+    // Tela de Viagem (TAB 3)
+    if (this.tripEcoScore) this.tripEcoScore.innerText = summary.ecoScore;
+    if (this.tripInstantKml) this.tripInstantKml.innerText = summary.instantKmPerLiter;
     if (this.tripInstantLh) this.tripInstantLh.innerText = summary.instantLitersPerHour;
     if (this.tripAirSource) this.tripAirSource.innerText = `(${summary.airSource})`;
-    this.tripAvgKml.innerText = summary.avgKmPerLiter;
-    this.tripDistance.innerText = summary.distanceKm;
-    this.tripDuration.innerText = summary.durationFormatted;
-    this.tripCost.innerText = summary.estimatedCostBrl;
-    this.tripFuelUsed.innerText = summary.fuelConsumedLiters;
-    this.tripMaxSpeed.innerText = summary.maxSpeed;
-    this.tripHardAccel.innerText = summary.hardAccelerations;
+    if (this.tripAvgKml) this.tripAvgKml.innerText = summary.avgKmPerLiter > 0 ? summary.avgKmPerLiter.toFixed(1) : '--';
+    if (this.tripDistance) this.tripDistance.innerText = summary.distanceKm;
+    if (this.tripDuration) this.tripDuration.innerText = summary.durationFormatted;
+    if (this.tripCost) this.tripCost.innerText = summary.estimatedCostBrl;
+    if (this.tripFuelUsed) this.tripFuelUsed.innerText = summary.fuelConsumedLiters;
+    if (this.tripMaxSpeed) this.tripMaxSpeed.innerText = summary.maxSpeed;
+    if (this.tripHardAccel) this.tripHardAccel.innerText = summary.hardAccelerations;
   }
 
   renderDTCs(codes) {

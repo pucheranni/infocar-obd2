@@ -129,3 +129,48 @@ test('Trip: aceleração real (+15 km/h em 1 s) é contada uma vez', () => {
     }
   });
 });
+
+test('PID 0100: decodifica mapa de bits do Clio 2011 (BE 3E B8 11)', () => {
+  const client = new ELM327Client();
+  client.parseSupportedPIDs('SEARCHING...\r\n41 00 BE 3E B8 11\r\r>');
+  // Checa PIDs que o carro do usuário havia dropado incorretamente
+  assert.ok(client.ecuSupportedPids.has('0105'), 'PID 0105 Temp. Arrefecimento suportado');
+  assert.ok(client.ecuSupportedPids.has('0106'), 'PID 0106 STFT suportado');
+  assert.ok(client.ecuSupportedPids.has('0107'), 'PID 0107 LTFT suportado');
+  assert.ok(client.ecuSupportedPids.has('0111'), 'PID 0111 TPS suportado');
+  assert.ok(client.ecuSupportedPids.has('010B'), 'PID 010B MAP suportado');
+  assert.ok(client.ecuSupportedPids.has('010C'), 'PID 010C RPM suportado');
+  assert.ok(!client.ecuSupportedPids.has('0110'), 'PID 0110 MAF NÃO suportado (Speed-Density)');
+});
+
+test('ELM327: PID suportado pela ECU nunca é jogado em unsupportedPids em NO DATA transitório', () => {
+  const client = new ELM327Client();
+  client.isPolling = true;
+  client.parseSupportedPIDs('41 00 BE 3E B8 11');
+  for (let i = 0; i < 10; i++) {
+    client.parseResponse('0105', 'NO DATA\r\r>');
+    client.parseResponse('0111', 'NO DATA\r\r>');
+  }
+  assert.ok(!client.unsupportedPids.has('0105'));
+  assert.ok(!client.unsupportedPids.has('0111'));
+});
+
+test('Trip: motor desligado (RPM < 300) zera consumo e não acumula combustível fantasma', () => {
+  withClock((clock) => {
+    const trip = new TripComputer();
+    try {
+      trip.update(0, 0, 0); // ignição ligada, motor desligado
+      for (let i = 0; i < 20; i++) {
+        clock.advance(500); // 10 segundos parado com ignição ligada
+        trip.update(0, 0, 0);
+      }
+      assert.equal(trip.fuelConsumedLiters, 0);
+      assert.equal(trip.instantLitersPerHour, 0);
+      assert.equal(trip.instantKmPerLiter, 0);
+      assert.equal(trip.getAverageFuelEconomy(), 0);
+    } finally {
+      clearInterval(trip.timer);
+    }
+  });
+});
+

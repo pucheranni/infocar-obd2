@@ -1,6 +1,6 @@
 // Service Worker for AutoPulse OBD2 PWA
 // Incremente CACHE_NAME a cada release para descartar caches antigos.
-const CACHE_NAME = 'autopulse-obd2-v3';
+const CACHE_NAME = 'autopulse-obd2-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
