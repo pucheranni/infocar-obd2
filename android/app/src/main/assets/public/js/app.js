@@ -5,6 +5,7 @@ import { lookupDTC } from './obd/dtc-db.js';
 import { listPairedDevices, isBtClassicAvailable } from './obd/transports/bt-classic.js';
 import { ShiftCoach } from './obd/shift-coach.js';
 import { POIManager } from './routes/poi-manager.js';
+import { TripStateMachine, VehicleState } from './obd/state-machine.js';
 
 class AutoPulseApp {
   constructor() {
@@ -12,6 +13,8 @@ class AutoPulseApp {
     this.trip = new TripComputer();
     this.shiftCoach = new ShiftCoach();
     this.poiManager = new POIManager();
+    this.stateMachine = new TripStateMachine();
+    this.isAdaptivePolling = true;
     this.currentView = 'dashboard';
     this.isHUD = false;
     this.isHUDMirrored = false;
@@ -406,12 +409,32 @@ class AutoPulseApp {
   }
 
   setupOBDCallbacks() {
+    // FSM State transitions & callbacks
+    this.stateMachine.onStateChange = (newState, oldState, reason) => {
+      this.appendTerminalLog(`[ESTADO] ${oldState} ➔ ${newState} (${reason})`, 'info');
+      if (this.activeRouteStatus) {
+        this.activeRouteStatus.innerText = newState.replace('_', ' ');
+      }
+    };
+
+    this.stateMachine.onTripFinalized = (summary) => {
+      this.appendTerminalLog(`[VIAGEM] Consolidada! Parado: ${summary.stoppedDurationSeconds}s`, 'success');
+      if (this.tripPoiBadge) {
+        this.tripPoiBadge.innerText = 'VIAGEM FINALIZADA';
+        this.tripPoiBadge.style.color = 'var(--accent-green)';
+        this.tripPoiBadge.style.borderColor = 'var(--accent-green)';
+      }
+    };
+
     // Status changes
     this.client.onStatusChange = (status) => {
       this.statusText.innerText = status;
       this.statusIndicator.className = 'status-dot';
 
-      if (status === ConnectionStatus.CONNECTED) {
+      const isConn = (status === ConnectionStatus.CONNECTED);
+      this.stateMachine.setBluetoothStatus(isConn);
+
+      if (isConn) {
         this.statusIndicator.classList.add('connected');
         this.btnConnect.style.display = 'none';
         this.btnDisconnect.style.display = 'block';
@@ -435,9 +458,16 @@ class AutoPulseApp {
       });
       this.updateTripUI();
 
+      // State machine tick with adaptive polling interval
+      const nextInterval = this.stateMachine.update(data.rpm, data.speed);
+      if (this.isAdaptivePolling && nextInterval && nextInterval !== this.client.pollingRateMs) {
+        this.client.pollingRateMs = nextInterval;
+      }
+
       // Check POI arrival
       const arrival = this.poiManager.checkArrival(data.rpm, data.speed);
       if (arrival) {
+        this.stateMachine.setPoiStatus(true);
         this.appendTerminalLog(`[ROTA] Chegada detectada em ${arrival.destination}! Rota: ${arrival.routeName}`, 'success');
       }
       this.updateRouteUI();

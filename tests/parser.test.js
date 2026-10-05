@@ -350,5 +350,85 @@ test('POI: checkArrival detecta chegada somente após 180s parado no raio do des
   assert.equal(manager.activeRouteName, 'Casa ➔ Tetra Pak');
 });
 
+// ---------------------------------------------------------------- Trip State Machine (FSM)
+import { TripStateMachine, VehicleState } from '../js/obd/state-machine.js';
+
+test('FSM: transita de IDLE_STANDBY para CONNECTED e TRIP_ACTIVE ao ligar motor', () => {
+  const fsm = new TripStateMachine();
+  assert.equal(fsm.state, VehicleState.IDLE_STANDBY);
+
+  fsm.setBluetoothStatus(true);
+  fsm.update(0, 0);
+  assert.equal(fsm.state, VehicleState.CONNECTED);
+
+  // Motor dá partida: RPM = 800
+  fsm.update(800, 0);
+  assert.equal(fsm.state, VehicleState.TRIP_ACTIVE);
+});
+
+test('FSM: debounce de parada não encerra viagem no semáforo (anti-stall)', () => {
+  let now = 1000000;
+  const fsm = new TripStateMachine({ stallDebounceSeconds: 60 });
+  fsm.setBluetoothStatus(true);
+  fsm.setState(VehicleState.TRIP_ACTIVE);
+
+  // Parou no semáforo por 30s
+  fsm.update(0, 0, now);
+  fsm.update(0, 0, now + 30000);
+  assert.equal(fsm.state, VehicleState.TRIP_ACTIVE);
+
+  // Após 65s de motor desligado, passa para PARKED_CONSOLIDATING
+  fsm.update(0, 0, now + 65000);
+  assert.equal(fsm.state, VehicleState.PARKED_CONSOLIDATING);
+
+  // Semáforo abre e motor religa -> retorna imediatamente para TRIP_ACTIVE
+  fsm.update(950, 15, now + 70000);
+  assert.equal(fsm.state, VehicleState.TRIP_ACTIVE);
+});
+
+test('FSM: consolida e finaliza viagem em SLEEP após tempo de permanência no POI', () => {
+  let now = 2000000;
+  let finalizedData = null;
+  const fsm = new TripStateMachine({
+    stallDebounceSeconds: 60,
+    poiFinalizeSeconds: 180,
+    onTripFinalized: (data) => { finalizedData = data; }
+  });
+
+  fsm.setBluetoothStatus(true);
+  fsm.setPoiStatus(true); // Dentro de POI (ex: Tetra Pak)
+  fsm.setState(VehicleState.TRIP_ACTIVE);
+
+  // Carro parou
+  fsm.update(0, 0, now);
+  fsm.update(0, 0, now + 65000); // Entra em PARKED_CONSOLIDATING
+  assert.equal(fsm.state, VehicleState.PARKED_CONSOLIDATING);
+
+  // Permanece desligado por mais de 180s totais
+  fsm.update(0, 0, now + 185000);
+  assert.equal(fsm.state, VehicleState.SLEEP);
+  assert.ok(finalizedData);
+  assert.equal(finalizedData.inPoi, true);
+});
+
+test('FSM: calcula amostragem adaptativa (200ms aceleração vs 3000ms cruzeiro vs 30000ms sleep)', () => {
+  const fsm = new TripStateMachine();
+  fsm.setState(VehicleState.SLEEP);
+  assert.equal(fsm.calculatePollingInterval(0, 0), 30000);
+
+  fsm.setState(VehicleState.TRIP_ACTIVE);
+  // Variação brusca de velocidade (0 para 40 km/h) -> alta resolução (200ms)
+  const dynamicInterval = fsm.calculatePollingInterval(2500, 40);
+  assert.equal(dynamicInterval, 200);
+
+  // Cruzeiro estável por 15 chamadas na mesma velocidade
+  let cruiseInterval = 0;
+  for (let i = 0; i < 15; i++) {
+    cruiseInterval = fsm.calculatePollingInterval(2200, 80);
+  }
+  assert.equal(cruiseInterval, 3000);
+});
+
+
 
 
