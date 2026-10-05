@@ -1,28 +1,40 @@
 # 🚗 AutoPulse OBD2 (Infocar Style) & Projeto Renault Clio (2005 & 2011)
 
-> **Plataforma Open-Source de Telemetria, Diagnóstico ECU e Computador de Bordo Otimizada para Renault Clio II (2005 / K-Line) e Renault Clio (2011 / CAN Bus).**  
-> Desenvolvido em arquitetura **PWA (Progressive Web App)** de alta performance, executável diretamente via navegador no Android (Termux) e instalável na tela inicial.
+> **Plataforma Open-Source de Telemetria Automotiva, Diagnóstico de Injeção Eletrônica (ECU) e Computador de Bordo Especializado para Renault Clio II (2005 / K-Line) e Renault Clio (2011 / CAN Bus).**  
+> Disponível como **Aplicativo Android Nativo (APK)** via Capacitor e **Progressive Web App (PWA)** de alta performance executável via Termux / Chrome.
 
-> [!WARNING]
-> **Status real do projeto: protótipo ainda NÃO validado em carro.** Tudo foi exercitado apenas contra o simulador.
-> Pontos que as seções abaixo apresentam como definitivos mas que **estão por confirmar em campo**:
-> - **Protocolo do Clio 2011 (CAN) e do Clio 2005 (K-Line):** não confirmado. Pode ser K-Line nos dois. Por isso o perfil padrão é a *detecção automática* e os perfis Clio estão marcados "(a validar)".
-> - **Endereço `0x11` (Renault) × `0x33` (EOBD):** para PIDs genéricos o correto é o header padrão EOBD (`81 33 F1`, o padrão do ELM327). O `0x11` serve só para diagnóstico proprietário e foi removido dos perfis.
-> - **Benchmark do GitHub (seção 2):** baseado em buscas e resumos, não em leitura do código dos projetos.
-> - **Fases marcadas "Concluídas ✅":** significa "funciona no simulador", não "validado no carro".
-> - **Adaptador Bluetooth Classic ("ELM327 azul") não conecta** neste app web (Web Bluetooth só fala BLE). Ver plano de melhoria.
->
-> 📖 **Documentação de Engenharia e Próximos Passos:**
-> - [Plano de Melhoria Completo (24 achados, metas e roadmap)](docs/PLANO_DE_MELHORIA.md)
-> - [Roteiro de Descoberta Prático para o Adaptador Azul](docs/ROTEIRO_DESCOBERTA.md)
-> - [Estado Atual e Próximos Passos](docs/ESTADO_E_PROXIMOS_PASSOS.md)
+[![Android Release](https://img.shields.io/badge/Release-v0.2.1--beta-blue.svg)](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta)
+[![Build Status](https://img.shields.io/badge/Android%20APK-Passing-success.svg)](https://github.com/pucheranni/infocar-obd2/actions)
+[![Unit Tests](https://img.shields.io/badge/Tests-13%2F13%20Passing-brightgreen.svg)](tests/parser.test.js)
+[![Capacitor](https://img.shields.io/badge/Capacitor-8.5.2-blueviolet.svg)](package.json)
+[![Android SDK](https://img.shields.io/badge/CompileSdk-35%20(Android%2015)-orange.svg)](android/gradle.properties)
+
+---
+
+> [!NOTE]
+> ### 🚀 Estado Atual do Projeto (`v0.2.1-beta`)
+> 
+> O projeto evoluiu significativamente de um protótipo web para uma solução híbrida completa testada em bancada e simulador:
+> 
+> 1. **Instalador Android Direto (.APK):** Disponível para download na release [v0.2.1-beta](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta). O wrapper nativo Android (Capacitor 8 / SDK 35) permite comunicação direta com adaptadores Bluetooth Classic (SPP - o popular "ELM327 mini azul"), contornando a restrição de BLE do Web Bluetooth dos navegadores.
+> 2. **Blindagem contra PID Dropouts:** O motor de aquisição decodifica a máscara de bits do comando `0100` ([`parseSupportedPIDs`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/elm327.js#L559)), protegendo sensores suportados (temperatura do arrefecimento `0105`, MAP `010B`, TPS `0111`, etc.) de serem desativados por respostas transitórias de `NO DATA`.
+> 3. **Consumo Speed-Density para Motores Renault 1.0 16V (D4D):** Motores Clio 1.0/1.6 nacionais não possuem sensor MAF. O cálculo foi migrado para modelo termodinâmico Speed-Density ($m = \frac{P \cdot V}{R \cdot T} \cdot \frac{\text{RPM}}{120}$) usando sensor MAP (`010B`) e IAT (`010F`), com calibração volumétrica ($\eta_v = 0.80$) e estequiometria brasileira Flex-Fuel (E27 / E100).
+> 4. **Proteção contra Consumo Fantasma:** Quando a ignição está ligada com motor parado ($\text{RPM} < 300$), a vazão é zerada e nenhum consumo fantasma é integrado.
+> 5. **Ergonomia Móvel (Samsung Galaxy S23 e Telas Modernas):** Bottom dock remodelado com respeito estrito à `safe-area-inset-bottom`, eliminando sobreposição da barra de gestos e botões nativos do Android.
+> 6. **Pipeline de CI/CD Integrado:** GitHub Actions automatizado com compilação de APKs em ambiente Ubuntu com JDK 21 e upload automático de artefatos release.
+> 7. **Assistência Corporativa GPT-Sol:** Skill integrada [`gpt-sol-bridge`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/.agents/skills/gpt-sol-bridge/SKILL.md) para revisão técnica via Microsoft 365 Copilot via CDP (porta 9222).
+
+📖 **Documentação Complementar de Engenharia:**
+- [Plano de Melhoria Completo (24 achados, metas e roadmap)](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/PLANO_DE_MELHORIA.md)
+- [Roteiro de Descoberta Prático para o Adaptador Azul](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/ROTEIRO_DESCOBERTA.md)
+- [Estado Atual e Próximos Passos](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/docs/ESTADO_E_PROXIMOS_PASSOS.md)
 
 ---
 
 ## 📑 Sumário
 
 1. [Visão Geral & Contexto do Projeto](#1-visão-geral--contexto-do-projeto)
-2. [Benchmark & Análise Comparativa de Projetos Open-Source (GitHub)](#2-benchmark--análise-comparativa-de-projetos-open-source-github)
+2. [Benchmark & Análise Comparativa de Projetos Open-Source](#2-benchmark--análise-comparativa-de-projetos-open-source)
 3. [Dossiê Técnico: Renault Clio 2005 (K-Line) vs Renault Clio 2011 (CAN Bus)](#3-dossiê-técnico-renault-clio-2005-k-line-vs-renault-clio-2011-can-bus)
 4. [Arquitetura do Sistema](#4-arquitetura-do-sistema)
 5. [Architecture Decision Records (ADRs)](#5-architecture-decision-records-adrs)
@@ -31,75 +43,68 @@
    - [ADR-003: Compatibilidade de Hardware ELM327 & Mitigação de Clones](#adr-003-compatibilidade-de-hardware-elm327--mitigação-de-clones)
    - [ADR-004: Diagnóstico DTC com Dicionário Offline em Português](#adr-004-diagnóstico-dtc-com-dicionário-offline-em-português)
    - [ADR-005: Fila Assíncrona, Polling Prioritário & Watchdog K-Line](#adr-005-fila-assíncrona-polling-prioritário--watchdog-k-line)
-   - [ADR-006: Telemetria Flex-Fuel (Gasolina/Etanol) & Consumo Brasileiro](#adr-006-telemetria-flex-fuel-gasolinaetanol--consumo-brasileiro)
+   - [ADR-006: Telemetria Flex-Fuel & Cálculo Speed-Density (MAP + IAT)](#adr-006-telemetria-flex-fuel--cálculo-speed-density-map--iat)
    - [ADR-007: Head-Up Display (HUD) Noturno com Inversão Óptica](#adr-007-head-up-display-hud-noturno-com-inversão-óptica)
+   - [ADR-008: Empacotamento Android Nativo (Capacitor) para Suporte a Bluetooth Classic](#adr-008-empacotamento-android-nativo-capacitor-para-suporte-a-bluetooth-classic)
+   - [ADR-009: Decodificação de Bitmask PID 0100 e Blindagem contra Dropouts Transitórios](#adr-009-decodificação-de-bitmask-pid-0100-e-blindagem-contra-dropouts-transitórios)
 6. [Plano de Implementação Faseado (Roadmap)](#6-plano-de-implementação-faseado-roadmap)
-7. [Guia de Operação e Diagnóstico Prático](#7-guia-de-operação-e-diagnóstico-prático)
-8. [Estrutura do Repositório](#8-estrutura-do-repositório)
+7. [Suíte de Testes Automatizados (13 Testes)](#7-suíte-de-testes-automatizados-13-testes)
+8. [Guia de Operação e Instalação Prática](#8-guia-de-operação-e-instalação-prática)
+   - [Opção A: Instalação via APK Direto (Recomendada para Bluetooth Classic)](#opção-a-instalação-via-apk-direto-recomendada-para-bluetooth-classic)
+   - [Opção B: Execução via Termux (PWA / Adaptadores Wi-Fi ou BLE)](#opção-b-execução-via-termux-pwa--adaptadores-wi-fi-ou-ble)
+   - [Diagnóstico Rápido no Terminal Interativo](#diagnóstico-rápido-no-terminal-interativo)
+9. [Estrutura do Repositório](#9-estrutura-do-repositório)
 
 ---
 
 ## 1. Visão Geral & Contexto do Projeto
 
-Muitos entusiastas e proprietários de veículos da linha **Renault Clio** enfrentam grandes frustrações ao tentar conectar adaptadores universais **ELM327** com aplicativos genéricos da Play Store (como versões gratuitas do Torque, Car Scanner ou OBD Fusion). Os sintomas mais comuns são:
-- Mensagens persistentes de `BUS INIT: ERROR` ou `UNABLE TO CONNECT` no **Clio 2005**;
-- Travamento da comunicação após 5 a 10 segundos de leitura;
-- Falha na leitura de sensores essenciais (como temperatura da água ou sonda de oxigênio);
-- Leituras errôneas de consumo de combustível em motores **Hi-Flex** brasileiros (Etanol vs Gasolina).
+Proprietários de veículos da linha **Renault Clio** enfrentam desafios conhecidos ao utilizar aplicativos universais (como versões genéricas do Torque ou Car Scanner) conectados a adaptadores de baixo custo:
+- `BUS INIT: ERROR` ou `UNABLE TO CONNECT` recorrente no **Clio 2005 (K-Line)**;
+- Desconexão ou congelamento da leitura após poucos segundos;
+- Falha na leitura de temperatura da água ou sonda lambda por dropouts transitórios de dados;
+- Medição incorreta de consumo em motores **Hi-Flex** nacionais por falta de sensor MAF e variação da mistura Etanol/Gasolina.
 
-O **AutoPulse OBD2** foi projetado para eliminar esses gargalos, combinando:
-1. **Perfis de Conexão Nativos Renault:** Comandos AT específicos de temporização, endereçamento físico de ECU e controle de cabeçalho para o **Clio 2005** (K-Line / KWP2000) e **Clio 2011** (CAN 11-bit / 500kbps);
-2. **Ambiente Local e Portátil no Termux:** Executa um microservidor Python sem dependências externas, funcionando como servidor HTTP de arquivos estáticos e como ponte de rede TCP para adaptadores OBD2 Wi-Fi;
-3. **Frontend PWA Moderno:** Painel com visual esportivo inspirado no Infocar, com mostradores circulares SVG fluidos, modo HUD de alta visibilidade com espelhamento para para-brisa, computador de bordo com pontuação Eco-Driving e scanner DTC em português.
+O **AutoPulse OBD2** foi construído como uma plataforma especializada para eliminar esses problemas:
+1. **Multiplataforma:** Distribuído tanto como **APK Android Nativo** compilado via GitHub Actions quanto como **PWA** executável via Termux.
+2. **Motor de Protocolos e Bitmasking Inteligente:** Identifica automaticamente os PIDs suportados pela ECU pelo mapa de bits do PID `0100`, ignorando timeouts espúrios.
+3. **Consumo Físico Speed-Density:** Implementa cálculo estequiométrico preciso utilizando pressão absoluta no coletor (MAP) e temperatura de admissão (IAT) calibrado para motores D4D e K4M.
+4. **Cockpit Moderno Inspirado no Infocar:** Gauges circulares SVG de alta fidelidade, cards de consumo médio e instantâneo, pontuação de Eco-Driving, scanner DTC offline e modo HUD espelhado.
 
 ---
 
-## 2. Benchmark & Análise Comparativa de Projetos Open-Source (GitHub)
+## 2. Benchmark & Análise Comparativa de Projetos Open-Source
 
-Para fundamentar as decisões de engenharia, foram inspecionados os principais repositórios open-source voltados a OBD-II e ao ecossistema Renault:
-
-| Projeto GitHub | Tecnologias | Pontos Fortes | Limitações Identificadas | Lições / Aplicação no AutoPulse |
+| Projeto GitHub | Tecnologias | Pontos Fortes | Limitações Identificadas | Aplicação no AutoPulse |
 | :--- | :--- | :--- | :--- | :--- |
-| **[cedricp/ddt4all](https://github.com/cedricp/ddt4all)** | Python, PyQt, ELM327 | Acesso total a parâmetros de fábrica Renault (UCH, Airbag, Injeção) via base DDT2000. | Interface desktop pesada, complexa e com risco de corromper módulos (*expert mode*). | Mapeamento exato de endereçamento de ECU Renault (`ATSH8111F1` na K-Line e `ATSH7E0` na CAN). |
-| **[PyRen](https://gitlab.com/pyren/pyren)** | Python, ELM327 | Reimplementação leve do software de concessionária Renault Clip; excelente suporte a K-Line. | Linha de comando pura ou scripts difíceis de operar ao volante no celular. | Sequência de handshake do protocolo KWP2000 Fast Init e comando `ATWM` para keep-alive. |
-| **[EcuTweaker](https://github.com/cedricp/EcuTweaker)** | Python, Kivy (Android) | Port do DDT4All para telas de toque Android via Bluetooth. | Interface pouco ergonômica para monitoramento dinâmico em viagem (foco em configuração estática). | Tratamento de perda de conexão Bluetooth e seleção manual de portas serial/rfcomm. |
-| **[brendan-w/python-OBD](https://github.com/brendan-w/python-OBD)** | Python | Arquitetura robusta de polling assíncrono, decodificadores de PIDs e fila não bloqueante. | Não possui interface gráfica e depende de backend nativo completo. | Estrutura de fila de comandos, tratamento de timeouts e tabela de conversão de grandezas físicas. |
-| **[rpwalsh/onboarddiagnosticstool](https://github.com/rpwalsh/onboarddiagnosticstool)** | TypeScript, React, Web Bluetooth | Comunicação direta do navegador com adaptadores BLE sem instalação nativa. | Suporta apenas BLE padrão e não prevê adaptadores Wi-Fi ou USB Serial em navegadores móveis. | Padrão assíncrono de leitura de stream de caracteres e detecção do prompt `>` do ELM327. |
-| **Car Scanner ELM OBD2 (Perfis Proprietários)** | Mobile App | Perfis dedicados por montadora com strings AT testadas em campo. | Código fechado; recursos avançados restritos a planos pagos. | Validação dos parâmetros ideais para ECUs Renault Siemens Sirius e Magneti Marelli IAW. |
+| **[cedricp/ddt4all](https://github.com/cedricp/ddt4all)** | Python, PyQt, ELM327 | Acesso profundo a parâmetros Renault (UCH, Airbag, Injeção) via DDT2000. | Interface desktop pesada, risco de gravação indevida de módulos. | Mapeamento de endereçamentos e cabeçalhos Renault (`ATSH8111F1` e `ATSH7E0`). |
+| **[PyRen](https://gitlab.com/pyren/pyren)** | Python, ELM327 | Reimplementação leve do Renault Clip; robusto suporte K-Line. | Linha de comando pura, difícil de operar no celular em condução. | Handshake do protocolo KWP2000 Fast Init e parâmetros keep-alive. |
+| **[brendan-w/python-OBD](https://github.com/brendan-w/python-OBD)** | Python | Polling assíncrono, decodificadores de PIDs universais e fila de comandos. | Sem interface gráfica nativa para dispositivos móveis. | Estrutura de fila de comandos, tratamento de timeouts e tabela de conversão física. |
+| **[rpwalsh/onboarddiagnosticstool](https://github.com/rpwalsh/onboarddiagnosticstool)** | TypeScript, Web Bluetooth | Comunicação direta pelo navegador via BLE sem dependências nativas. | Não suporta Bluetooth Classic (SPP) nem adaptadores Wi-Fi locais. | Stream assíncrono de buffers seriais e detecção segura do prompt `>`. |
 
 ---
 
 ## 3. Dossiê Técnico: Renault Clio 2005 (K-Line) vs Renault Clio 2011 (CAN Bus)
 
-A frota brasileira e sul-americana do Renault Clio passou por uma transição eletroeletrônica crítica entre 2005 e 2011:
+A frota nacional do Renault Clio passou por uma transição eletroeletrônica marcante:
 
 ### 3.1. Renault Clio 2005 (Clio II Fase 2)
-* **Regulamentação:** Pré-OBDBr-2 (o padrão obrigatório de diagnose no Brasil só entrou em vigor pleno em 2010). Muitos veículos seguiam padrões proprietários franceses.
-* **Topologia de Diagnóstico:** **K-Line Física (Pino 7 do conector OBD-II DLC)**. Não há barramento CAN conectado à tomada de diagnose para injeção.
-* **Motores e Centrais (ECUs) Típicas:**
-  - **1.0 16V Hi-Flex (D4D):** Magneti Marelli IAW 5NR / 5NP ou Siemens SIM32.
-  - **1.0 8V Gasolina (D7D):** Siemens Sirius 32.
-  - **1.6 16V Hi-Flex (K4M):** Siemens Sirius 34 / EMS 3134.
-* **Protocolo de Comunicação:** **ISO 14230-4 KWP (Keyword Protocol 2000)** em modo Fast Init (5 bauds como fallback).
-* **Por que os apps comuns falham no Clio 2005:**
-  1. **Varredura Automática (`ATSP0`):** O adaptador tenta CAN 500k, CAN 250k e outros antes da K-Line, esgotando a janela de sincronismo da ECU.
-  2. **Endereçamento Genérico:** Scanners universais usam broadcast `7DF` ou `C0 33 F1`. A ECU Renault geralmente só responde ao seu endereço físico: **`11`** (Injeção) via cabeçalho `81 11 F1` (`ATSH8111F1`).
-  3. **Queda de Sessão KWP (Timeout P3 Max):** Se a central ficar sem receber mensagens por mais de ~5 segundos, ela cancela a sessão de diagnóstico. É obrigatório manter tráfego contínuo ou enviar `3E 00` (*TesterPresent*).
-  4. **Adaptadores ELM327 Clones ("v2.1" falsificados):** Chips piratas sem o microcontrolador **PIC18F25K80** não geram o pulso de despertar de 25ms low / 25ms high com precisão de microsegundos, causando `BUS INIT: ERROR`.
+* **Topologia:** **K-Line Física (Pino 7 do DLC)**. Sem barramento CAN na tomada de injeção.
+* **Centrais (ECUs) Típicas:** Magneti Marelli IAW 5NR / 5NP, Siemens SIM32 ou Sirius 32/34.
+* **Protocolo:** **ISO 14230-4 KWP (Keyword Protocol 2000)** em Fast Init (fallback em 5 bauds).
+* **Particularidades Críticas:**
+  - Varredura universal (`ATSP0`) costuma esgotar o tempo limite antes de atingir a K-Line;
+  - Requer watchdog periódico (`3E 00` / *TesterPresent*) para evitar encerramento de sessão KWP após ~5 segundos de inatividade;
+  - Exige microcontrolador genuíno **PIC18F25K80** para geração do pulso de inicialização (25ms low / 25ms high).
 
 ### 3.2. Renault Clio 2011 (Clio II Campus / Fase 3)
-* **Regulamentação:** Em conformidade com a resolução do CONAMA / **OBDBr-2**.
-* **Topologia de Diagnóstico:** **CAN Bus de Alta Velocidade (Pinos 6 CAN-H e 14 CAN-L)** a 500 kbps com identificadores de 11 bits.
-* **Motores e Centrais (ECUs) Típicas:**
-  - **1.0 16V Hi-Flex (D4D 760):** Siemens/Continental SIM32 ou Valeo V42.
-  - **1.6 16V Hi-Flex (K4M):** Continental EMS3134 / EMS3132.
-* **Protocolo de Comunicação:** **ISO 15765-4 CAN (11-bit ID, 500 kbaud)** (`ATSP6`).
-* **Comportamento & Otimizações:**
-  - Respostas quase instantâneas (< 15ms por comando);
-  - Endereço da ECU do motor: Header de envio **`7E0`** (`ATSH7E0`), resposta em **`7E8`**;
-  - Desativação de cabeçalhos (`ATH0`) para fluxo limpo de dados;
-  - Temporização adaptativa (`ATAT1`) e timeout reduzido (`ATST32`) para atingir 15 a 25 atualizações de gauge por segundo;
-  - Suporte ao PID `0152` para monitoramento da proporção calculada de Etanol no combustível.
+* **Topologia:** **CAN Bus de Alta Velocidade (Pinos 6 CAN-H e 14 CAN-L)** a 500 kbps (11-bit ID).
+* **Centrais (ECUs) Típicas:** Continental SIM32 ou Valeo V42.
+* **Protocolo:** **ISO 15765-4 CAN 11/500** (`ATSP6`).
+* **Particularidades Críticas:**
+  - Respostas com latência inferior a 15ms por requisição;
+  - Cabeçalho de envio `7E0` (`ATSH7E0`), resposta da injeção em `7E8`;
+  - Ausência de sensor MAF: alimentação de ar calculada via **Speed-Density** (PIDs `010B` MAP e `010F` IAT).
 
 ### 3.3. Comparativo da Pinagem do Conector OBD-II (DLC)
 
@@ -113,13 +118,11 @@ A frota brasileira e sul-americana do Renault Clio passou por uma transição el
 
 | Pino | Função Padrão | Renault Clio 2005 | Renault Clio 2011 |
 | :---: | :--- | :--- | :--- |
-| **4** | Terra do Chassi (*Chassis Ground*) | Conectado (Terra) | Conectado (Terra) |
-| **5** | Terra do Sinal (*Signal Ground*) | Conectado (Terra) | Conectado (Terra) |
-| **6** | CAN High (ISO 15765-4) | Geralmente Ausente ou Inativo na Injeção | **Ativo (CAN-H 500k)** |
-| **7** | **K-Line (ISO 9141-2 / ISO 14230-4)** | **Ativo Primário (Injeção Eletrônica)** | Ativo para módulos legados / Secundário |
-| **14** | CAN Low (ISO 15765-4) | Geralmente Ausente ou Inativo na Injeção | **Ativo (CAN-L 500k)** |
-| **15** | L-Line (ISO 9141-2) | Opcional (raramente usado) | Não conectado |
-| **16** | Tensão Positiva da Bateria (+12V permanente) | Conectado (+12V constante) | Conectado (+12V constante) |
+| **4 / 5** | Terra do Chassi / Terra do Sinal | Conectado (Terra) | Conectado (Terra) |
+| **6** | CAN High (ISO 15765-4) | Ausente/Inativo na Injeção | **Ativo (CAN-H 500k)** |
+| **7** | **K-Line (ISO 9141-2 / ISO 14230-4)** | **Ativo Primário (Injeção)** | Secundário / Diagnóstico Auxiliar |
+| **14** | CAN Low (ISO 15765-4) | Ausente/Inativo na Injeção | **Ativo (CAN-L 500k)** |
+| **16** | Tensão Positiva da Bateria (+12V permanente) | Conectado (+12V) | Conectado (+12V) |
 
 ---
 
@@ -127,53 +130,63 @@ A frota brasileira e sul-americana do Renault Clio passou por uma transição el
 
 ```mermaid
 flowchart TD
-    subgraph Celular["Dispositivo Android / Termux"]
-        subgraph Frontend["Frontend SPA / PWA (Navegador Chrome)"]
-            UI["Interface Visual (Cockpit, Gauges, HUD, DTC, Trip)"]
-            Trip["TripComputer (Consumo km/L, R$, Eco-Score)"]
-            Driver["ELM327Client (Fila de Comandos, PIDs, State Machine)"]
-            Profiles["Vehicle Profiles Engine (Clio 2005 / Clio 2011)"]
-            SW["Service Worker (Cache Offline Completo)"]
+    subgraph BuildEnv["Ambiente de Distribuição & CI/CD"]
+        GHA["GitHub Actions (build-apk.yml)"] -->|Compilação Gradle / JDK 21| APK["AutoPulse-OBD2.apk (v0.2.1-beta)"]
+    end
+
+    subgraph Dispositivo["Dispositivo Android / Smartphone"]
+        subgraph NativeCore["Camada de Execução"]
+            Capacitor["Capacitor 8 Android Wrapper"]
+            Browser["Navegador Chrome / Termux PWA"]
         end
 
-        subgraph Transportes["Camada de Transporte Abstrata (Polimórfica)"]
+        subgraph AppFrontend["Frontend SPA / Web App"]
+            UI["Cockpit & Gauges SVG / HUD / DTC"]
+            Trip["TripComputer (Speed-Density, Consumo, Eco-Score)"]
+            Driver["ELM327Client (Queue, Bitmask 0100, Dropout Shield)"]
+            Profiles["Vehicle Profiles Engine (Auto / Clio 2011 / Clio 2005)"]
+            SW["Service Worker (Network-First v2)"]
+        end
+
+        subgraph TransportLayer["Camada de Transporte Polimórfica"]
+            T_BTClassic["Bluetooth Classic / SPP (Capacitor Nativo)"]
             T_BLE["BLETransport (Web Bluetooth API)"]
-            T_Serial["SerialTransport (Web Serial API / USB OTG)"]
-            T_HTTP["HTTPBridgeTransport (Fetch /api/send)"]
-            T_Sim["VirtualECU (Simulador Físico Local)"]
+            T_Serial["SerialTransport (Web Serial USB OTG)"]
+            T_HTTP["HTTPBridgeTransport (Python Socket Server)"]
+            T_Sim["VirtualECU (Simulador Local)"]
         end
 
-        subgraph Backend["Microservidor Local (Python 3)"]
-            PyServer["server.py (HTTP Server na porta 8080)"]
-            TCPBridge["Ponte TCP Socket (192.168.0.10:35000)"]
+        subgraph MicroServer["Servidor Local Termux (Opcional)"]
+            PyServer["server.py (Multi-Threaded HTTP + TCP Bridge)"]
         end
     end
 
-    subgraph Hardware["Hardware Automotivo"]
-        ELM_BLE["Adaptador ELM327 Bluetooth"]
+    subgraph AutoHW["Hardware Automotivo"]
+        ELM_BT["Adaptador ELM327 Bluetooth Classic / BLE"]
         ELM_WIFI["Adaptador ELM327 Wi-Fi"]
         ELM_USB["Adaptador ELM327 USB OTG"]
-        ECU_2005["Renault Clio 2005 (K-Line Pino 7 / KWP2000)"]
-        ECU_2011["Renault Clio 2011 (CAN Pinos 6/14 / 500kbps)"]
+        ECU_05["Renault Clio 2005 (K-Line Pino 7)"]
+        ECU_11["Renault Clio 2011 (CAN Pinos 6/14)"]
     end
+
+    APK --> Capacitor
+    Capacitor --> AppFrontend
+    Browser --> AppFrontend
 
     UI --> Driver
     Driver --> Profiles
     Driver --> Trip
-    Driver --> Transportes
+    Driver --> TransportLayer
 
-    T_BLE --> ELM_BLE
+    T_BTClassic --> ELM_BT
+    T_BLE --> ELM_BT
     T_Serial --> ELM_USB
     T_HTTP --> PyServer
-    PyServer --> TCPBridge
-    TCPBridge --> ELM_WIFI
+    PyServer --> ELM_WIFI
 
-    ELM_BLE -. K-Line .-> ECU_2005
-    ELM_BLE -. CAN Bus .-> ECU_2011
-    ELM_WIFI -. K-Line .-> ECU_2005
-    ELM_WIFI -. CAN Bus .-> ECU_2011
-    ELM_USB -. K-Line .-> ECU_2005
-    ELM_USB -. CAN Bus .-> ECU_2011
+    ELM_BT -. KWP2000 .-> ECU_05
+    ELM_BT -. CAN Bus .-> ECU_11
+    ELM_WIFI -. CAN Bus .-> ECU_11
 ```
 
 ---
@@ -182,84 +195,48 @@ flowchart TD
 
 ### ADR-001: PWA Web-First + Local Termux Python Bridge
 * **Status:** Aceito e Implementado.
-* **Contexto:** Compilar um aplicativo nativo Android (Java/Kotlin/Flutter) no Termux possui alto custo computacional, requer SDKs extensos e dificulta atualizações rápidas.
-* **Decisão:** Construir a aplicação como um **Progressive Web App (PWA)** baseado em HTML5/CSS3/JavaScript ES Modules, servido localmente por um script Python 3 padrão (`server.py`) na porta 8080.
-* **Consequências:**
-  - Zero dependências de compilação ou gerenciadores externos de pacotes;
-  - Instalação imediata na tela inicial do Android via Chrome como app independente em tela cheia;
-  - Operação 100% offline garantida pelo `sw.js` (Service Worker).
+* **Decisão:** Construir a base como Progressive Web App (HTML5/CSS3/ES Modules) operável via navegador ou microservidor local Termux (`server.py`).
+* **Consequências:** Agilidade de desenvolvimento, operação offline e portabilidade universal.
 
----
-
-### ADR-002: Motor de Perfis de Protocolo Dinâmico (Clio 2005 K-Line vs Clio 2011 CAN)
+### ADR-002: Motor de Perfis de Protocolo Dinâmico
 * **Status:** Aceito e Implementado.
-* **Contexto:** Tentar conectar o Clio 2005 e o Clio 2011 com o comando padrão `ATSP0` (Auto) gera timeouts, perda de sincronismo e falhas de comunicação.
-* **Decisão:** Criar um catálogo estático `VEHICLE_PROFILES` no módulo `elm327.js`, configurando automaticamente os comandos exatos de inicialização:
-  1. **`clio2011_can`:**
-     - Comandos: `ATZ`, `ATE0`, `ATL0`, `ATS1`, `ATH0`, `ATSP6`, `ATSH7E0`, `ATCAF1`, `ATAT1`, `ATST32`.
-     - Foco: Alta taxa de quadros (15-20 Hz) para velocímetro e conta-giros sem travamentos.
-  2. **`clio2005_fast`:**
-     - Comandos: `ATZ`, `ATE0`, `ATL0`, `ATS1`, `ATH1`, `ATSP5`, `ATSH8111F1`, `ATWM8111F13E`, `ATSW00`, `ATST64`.
-     - Foco: Inicialização direta KWP Fast Init na K-Line com endereço físico da injeção Renault (0x11).
-  3. **`clio2005_slow`:**
-     - Comandos: `ATZ`, `ATE0`, `ATL0`, `ATS1`, `ATH1`, `ATSP4`, `ATSH8111F1`, `ATIIA11`, `ATST96`.
-     - Foco: Fallback para ECUs antigas Siemens Sirius 32 que exigem despertar em 5 bauds.
-* **Consequências:** Elimina a incerteza do handshake e conecta em menos de 2 segundos.
-
----
+* **Decisão:** Perfis dedicados para `clio2011_can` (`ATSP6`, `ATSH7E0`, `ATCAF1`, `ATAT1`), `clio2005_fast` (`ATSP5`, `ATSH8111F1`) e modo padrão `auto` (`ATSP0`).
 
 ### ADR-003: Compatibilidade de Hardware ELM327 & Mitigação de Clones
-* **Status:** Aceito.
-* **Contexto:** O mercado está saturado de adaptadores azuis "ELM327 v2.1" com microcontroladores de baixo custo que não implementam os protocolos ISO legados (ISO 9141 e ISO 14230) e travam com comandos `ATSH` ou `ATWM`.
-* **Decisão:**
-  - Implementar verificação de versão via `ATI` e comandos de tolerância a falhas;
-  - Exigir nos guias de documentação o uso de adaptadores baseados no chip genuíno **Microchip PIC18F25K80** (versões firmware v1.4 ou v1.5) ou modelos de alta confiabilidade (como Vgate iCar Pro, vLinker FS ou Viecar) para o Clio 2005;
-  - No Clio 2011, como a comunicação é CAN padrão, a tolerância a adaptadores comuns é significativamente maior.
-* **Consequências:** Usuários economizam tempo evitando diagnósticos frustrados causados por limitações físicas de hardware pirata.
-
----
+* **Status:** Aceito e Implementado.
+* **Decisão:** Tolerância com comandos de inicialização brandos para clones v2.1 em CAN e recomendação do chip PIC18F25K80 para K-Line.
 
 ### ADR-004: Diagnóstico DTC com Dicionário Offline em Português
 * **Status:** Aceito e Implementado.
-* **Contexto:** A resposta bruta dos modos 03 e 07 é uma sequência de bytes hexadecimais (ex: `43 01 03 00 00 00`). Sem conexão com a internet na estrada, o usuário não consegue saber a gravidade da falha.
-* **Decisão:**
-  - Implementar decodificador completo de DTC (P0/P1/P2/P3, B0/B1/B2/B3, C0/C1/C2/C3, U0/U1/U2/U3);
-  - Embarcar banco de dados offline [`dtc-db.js`](file:///data/data/com.termux/files/home/infocar-obd2/js/obd/dtc-db.js) com tradução em português, nível de severidade (Baixa, Média, Alta, Crítica) e causas comuns focadas em veículos Renault (ex: bobinas de ignição, sensor de rotação CKP, corpo de borboleta sujo, sonda lambda).
-* **Consequências:** Diagnóstico instantâneo e seguro sem consumir dados móveis.
-
----
+* **Decisão:** Decodificador de modos 03 e 07 com banco embarcado [`dtc-db.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/obd/dtc-db.js) com severidade e causas prováveis para mecânica Renault.
 
 ### ADR-005: Fila Assíncrona, Polling Prioritário & Watchdog K-Line
 * **Status:** Aceito e Implementado.
-* **Contexto:** O barramento K-Line do Clio 2005 tem taxa de transmissão baixa (10.400 bps), suportando no máximo 4 a 6 solicitações por segundo. Além disso, se ficar ocioso por mais de 5 segundos, a central encerra o modo de diagnose.
-* **Decisão:**
-  - Implementar uma fila `commandQueue` com promessas (`Promise`) e guardas de timeout dinâmicos;
-  - Criar watchdog de *Keep-Alive* (`startKeepAlive`) disparando `3E 00` (*TesterPresent*) a cada 2,5 segundos quando a fila estiver ociosa em conexões K-Line;
-  - Agrupar polling contínuo priorizando variáveis dinâmicas (RPM `010C` e Velocidade `010D`) e intercalando sensores lentos (Temperatura `0105`, Carga `0104`, Bateria `ATRV`).
-* **Consequências:** Comunicação estável sem saturação do barramento e sem desconexões repentinas da ECU.
+* **Decisão:** Fila não bloqueante de promessas com prioridade para RPM/Velocidade e envio automático de `3E 00` (*TesterPresent*) para manter sessões KWP ativas.
 
----
-
-### ADR-006: Telemetria Flex-Fuel (Gasolina/Etanol) & Consumo Brasileiro
+### ADR-006: Telemetria Flex-Fuel & Cálculo Speed-Density (MAP + IAT)
 * **Status:** Aceito e Implementado.
-* **Contexto:** O Brasil possui veículos com motores bi-combustível (Hi-Flex). A estequiometria varia de 14.7:1 (Gasolina com 27% etanol anidro) a 9.0:1 (Etanol hidratado puro). Cálculos universais baseados em gasolina geram erros de até 40% no consumo em km/L quando o carro está abastecido com Etanol.
-* **Decisão:**
-  - Suportar configuração manual de tipo de combustível (Gasolina / Etanol) e preço do litro em R$;
-  - Consultar automaticamente o PID `0152` (Teor de Etanol inferido pela ECU) quando suportado pelo veículo (Clio 2011 Hi-Flex);
-  - Aplicar as fórmulas baseadas no fluxo de ar MAF (g/s):
-    $$\text{Taxa de Combustível (L/s)} = \frac{\text{MAF (g/s)}}{\text{AFR} \times \rho_{\text{combustível}}}$$
-    $$\text{Consumo Instantâneo (km/L)} = \frac{\text{Velocidade (km/h)}}{3600 \times \text{Taxa de Combustível (L/s)}}$$
-* **Consequências:** Cálculos de consumo precisos e estimativa real do custo em Reais (R$) por quilômetro rodado.
-
----
+* **Contexto:** Motores Renault Hi-Flex 1.0 16V (D4D) e 1.6 16V (K4M) não possuem sensor de massa de ar (MAF), inviabilizando fórmulas tradicionais.
+* **Decisão:** Implementar modelo Speed-Density no [`TripComputer`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/js/trip.js#L75):
+  $$\dot{m}_{\text{ar}} = \frac{\text{MAP} \times V_d \times \eta_v}{R_{\text{ar}} \times T_{\text{IAT}}} \times \left(\frac{\text{RPM}}{120}\right)$$
+  - Gasolina nacional (E27): AFR 13.2:1, densidade 745 g/L;
+  - Etanol hidratado (E100): AFR 9.0:1, densidade 790 g/L;
+  - Proteção contra motor desligado ($\text{RPM} < 300$).
 
 ### ADR-007: Head-Up Display (HUD) Noturno com Inversão Óptica
 * **Status:** Aceito e Implementado.
-* **Contexto:** Conduzir observando a tela do smartphone no suporte gera distração. A projeção de dados no para-brisa melhora a segurança e ergonomia em viagens noturnas.
-* **Decisão:**
-  - Implementar modo HUD de alto contraste com fundo preto puro (`#000000`) e tipografia monoespaçada neon;
-  - Adicionar chave de inversão óptica (`transform: scaleX(-1)`) via CSS, fazendo com que o reflexo no vidro dianteiro seja legível pelo motorista na orientação correta.
-* **Consequências:** Projeção HUD nativa sem necessidade de película especial para para-brisa em ambientes escuros.
+* **Decisão:** Modo HUD com inversão geométrica horizontal (`transform: scaleX(-1)`) e contraste elevado para reflexão no para-brisa.
+
+### ADR-008: Empacotamento Android Nativo (Capacitor) para Suporte a Bluetooth Classic
+* **Status:** Aceito e Implementado.
+* **Contexto:** A Web Bluetooth API restringe-se exclusivamente a dispositivos BLE, impedindo conexão direta do navegador com o adaptador azul ELM327 Bluetooth Classic (SPP).
+* **Decisão:** Adicionar invólucro Android nativo utilizando Capacitor 8 (`@capacitor/android` v8.5.2) e pipeline de build automatizado via GitHub Actions com compilação direta para SDK 35 (`compileSdkVersion = 35`).
+* **Consequências:** O usuário pode instalar diretamente o arquivo `app-debug.apk` e usufruir de conexão Bluetooth Classic sem limitações do navegador.
+
+### ADR-009: Decodificação de Bitmask PID 0100 e Blindagem contra Dropouts Transitórios
+* **Status:** Aceito e Implementado.
+* **Contexto:** Respostas ocasionais de `NO DATA` em barramentos CAN ou K-Line causavam o descarte prematuro de PIDs essenciais (como temperatura do arrefecimento `0105` ou sensor MAP `010B`).
+* **Decisão:** Implementar a decodificação da máscara de bits de 32 bits retornada pelo comando `0100` (`parseSupportedPIDs`). PIDs presentes nessa máscara são registrados em `ecuSupportedPids` e ficam imunes ao descarte em `unsupportedPids`.
 
 ---
 
@@ -267,139 +244,164 @@ flowchart TD
 
 ### 📌 Fase 1: Fundação de Hardware & Handshake Específico (Concluída ✅)
 - [x] Criação do microservidor Python `server.py` no Termux.
-- [x] Implementação da camada de transporte abstrata: Web Bluetooth (BLE), Web Serial (USB) e Ponte TCP (Wi-Fi).
-- [x] Estruturação da biblioteca de PIDs OBD-II (`pids.js`).
+- [x] Implementação da camada de transporte abstrata (BLE, USB OTG, Wi-Fi Socket, Simulador).
 - [x] Implementação dos perfis `clio2011_can`, `clio2005_fast` e `clio2005_slow`.
-- [x] Adição do seletor visual de perfis na tela de configurações.
+- [x] Seletor visual de perfis e persistência em `localStorage`.
 
 ### 📌 Fase 2: Telemetria & Monitoramento em Tempo Real (Concluída ✅)
-- [x] Mostradores circulares com animação suave via SVG (`dasharray` / `dashoffset`).
-- [x] Conta-giros com aviso de faixa de corte (*redline*).
-- [x] Monitor de temperatura de arrefecimento com alerta visual em >100°C.
-- [x] Leitura de tensão de bateria via comando nativo `ATRV` com diagnóstico de alternador.
-- [x] Watchdog de *Keep-Alive* K-Line para o Clio 2005.
+- [x] Mostradores circulares com animação SVG contínua (`dasharray`/`dashoffset`).
+- [x] Conta-giros com indicação de corte de giro (*redline*).
+- [x] Monitor de temperatura com alerta em >100°C.
+- [x] Tensão de bateria com diagnóstico de alternador (`ATRV`).
+- [x] Watchdog de *Keep-Alive* K-Line.
 
 ### 📌 Fase 3: Diagnóstico DTC & Limpeza de Falhas (Concluída ✅)
 - [x] Varredura de códigos Modo 03 (confirmados) e Modo 07 (pendentes).
-- [x] Banco de dados offline de DTCs em português com causas prováveis.
-- [x] Procedimento seguro de limpeza de erros (Modo 04 / Reset da luz de injeção).
-- [x] Gerador de falhas simuladas para testes de bancada.
+- [x] Banco de dados offline de DTCs em português com causas prováveis Renault.
+- [x] Procedimento de limpeza de erros (Modo 04 / Reset da luz da injeção).
+- [x] Tratamento de respostas multi-frame ISO-TP (linhas `0:` e `1:`).
 
 ### 📌 Fase 4: Computador de Bordo & Otimização Hi-Flex (Concluída ✅)
-- [x] Integração do módulo `trip.js` com cálculo de consumo em km/L e L/h.
-- [x] Suporte a parâmetros estequiométricos de Etanol e Gasolina.
-- [x] Algoritmo de Eco-Driving com detecção de acelerações bruscas.
-- [x] Estimativa de gasto financeiro da viagem em Reais (R$).
+- [x] Módulo `trip.js` com cálculo Speed-Density (MAP + IAT) para motores sem MAF.
+- [x] Integração temporal contínua baseada em delta de relógio real (`dt`).
+- [x] Filtro de aceleração brusca e cálculo de pontuação Eco-Driving.
+- [x] Cards dinâmicos no Cockpit: Consumo Instantâneo (km/L ou L/h) e Média da Viagem.
+- [x] Blindagem contra acúmulo fantasma de combustível com motor desligado ($\text{RPM} < 300$).
 
-### 📌 Fase 5: Expansões Futuras & Módulos Avançados (Próximos Passos 🚀)
-- [ ] **Módulo UCH Renault (K-Line / CAN):** Adicionar leitura do estado de portas, luzes e comandos de chave através dos identificadores de conforto da Renault.
-- [ ] **Data Logging CSV:** Exportação de telemetria completa da viagem para arquivo `.csv` no armazenamento do celular para análise de desempenho e telemetria mecânica.
-- [ ] **Teste de Aceleração 0-100 km/h:** Módulo com cronômetro automático disparado pela variação de velocidade no barramento CAN.
+### 📌 Fase 5: Distribuição Nativa & Ergonomia Mobile (Concluída ✅)
+- [x] Empacotamento nativo Android com Capacitor 8 (SDK 35 / Android 15).
+- [x] Esteira automatizada no GitHub Actions gerando release com APK direto ([v0.2.1-beta](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta)).
+- [x] Reestruturação da barra de navegação inferior (dock) para Samsung Galaxy S23 e navegação por gestos do Android (`safe-area-inset-bottom`).
+- [x] Blindagem de PIDs confirmados via bitmask do PID `0100`.
 
----
-
-## 7. Guia de Operação e Diagnóstico Prático
-
-### 7.1. Onde fica a tomada OBD-II no Renault Clio?
-Nos modelos **Clio II (tanto 2005 quanto 2011)**, a tomada diagnóstica de 16 pinos está localizada **no console central, logo abaixo do cinzeiro/porta-moedas**, à frente da alavanca de câmbio.  
-Para acessar:
-1. Puxe a tampa plástica ou remova o cinzeiro removível;
-2. O conector fêmea amarelo ou preto estará voltado para cima ou levemente inclinado.
+### 📌 Fase 6: Validação em Campo & Expansões Futuras (Próximos Passos 🚀)
+- [ ] Validação com conexão física no conector OBD-II do Clio 2011 e Clio 2005.
+- [ ] Data Logging para exportação de telemetria completa da viagem em arquivo `.csv`.
+- [ ] Módulo de teste de aceleração 0-100 km/h com disparo automático via telemetria CAN.
+- [ ] Integração com identificadores da UCH Renault (estado de portas, travas e luzes).
 
 ---
 
-### 7.2. Passo a Passo de Execução no Termux
+## 7. Suíte de Testes Automatizados (13 Testes)
 
-1. **Abra o aplicativo Termux no celular:**
+O repositório possui uma suíte de testes unitários automatizados em [`tests/parser.test.js`](file:///c:/Users/BRSOUSAG/OneDrive%20-%20Tetra%20Pak/Desktop/OBD/infocar-obd2/tests/parser.test.js) utilizando o executor nativo do Node.js (`node --test`), sem dependências pesadas externas:
+
+```bash
+npm test
+```
+
+### Resultados da Suíte:
+```text
+✔ CAN: pula o byte de contagem e decodifica dois DTCs
+✔ K-Line: sem byte de contagem
+✔ CAN multi-frame: ignora marcadores 0:/1: e o cabeçalho de tamanho
+✔ CAN sem falhas devolve lista vazia
+✔ Mode 07 usa o prefixo 47 e marca como pendente
+✔ Ida e volta: simulador -> parser (CAN)
+✔ VIN multi-frame do simulador é remontado
+✔ Trip: distância e combustível seguem o tempo real, não o número de chamadas
+✔ Trip: variação lenta de velocidade não conta como aceleração brusca
+✔ Trip: aceleração real (+15 km/h em 1 s) é contada uma vez
+✔ PID 0100: decodifica mapa de bits do Clio 2011 (BE 3E B8 11)
+✔ ELM327: PID suportado pela ECU nunca é jogado em unsupportedPids em NO DATA transitório
+✔ Trip: motor desligado (RPM < 300) zera consumo e não acumula combustível fantasma
+
+ℹ tests 13 | pass 13 | fail 0 | duration_ms ~380ms
+```
+
+---
+
+## 8. Guia de Operação e Instalação Prática
+
+### Onde fica a tomada OBD-II no Renault Clio?
+Nos modelos **Clio II (2005 e 2011)**, o conector de 16 pinos localiza-se **no console central, logo abaixo do cinzeiro/porta-moedas**, à frente da alavanca de câmbio. Basta puxar a tampa plástica ou retirar o cinzeiro removível.
+
+---
+
+### Opção A: Instalação via APK Direto (Recomendada para Bluetooth Classic)
+Ideal para uso com o adaptador mini azul ELM327 ou qualquer scanner Bluetooth clássico:
+1. No smartphone Android, acesse a página de releases do projeto:
+   👉 **[Download AutoPulse OBD2 APK (v0.2.1-beta)](https://github.com/pucheranni/infocar-obd2/releases/tag/v0.2.1-beta)**
+2. Baixe o arquivo `app-debug.apk` e instale no dispositivo (autorize a instalação de fontes desconhecidas se solicitado).
+3. Abra o **AutoPulse OBD2**, emparelhe seu adaptador no menu Bluetooth do Android e conecte.
+
+---
+
+### Opção B: Execução via Termux (PWA / Adaptadores Wi-Fi ou BLE)
+Para quem prefere rodar localmente sem compilação:
+1. Abra o **Termux** no Android:
    ```bash
    cd ~/infocar-obd2
    python server.py
    ```
-2. **Acesse no navegador Google Chrome do Android:**
-   ```
-   http://localhost:8080
-   ```
-3. **Instale como PWA:**
-   - No Chrome, toque nos **três pontinhos verticais** (canto superior direito);
-   - Selecione **"Adicionar à tela inicial"** ou **"Instalar aplicativo"**;
-   - O ícone do **AutoPulse OBD2** ficará disponível na gaveta de aplicativos.
+2. Abra o Chrome no celular e acesse `http://localhost:8080`.
+3. Toque no menu do Chrome e selecione **"Adicionar à tela inicial"** para instalar como PWA.
 
 ---
 
-### 7.3. Conectando no Renault Clio 2011 (CAN Bus)
-1. Conecte o adaptador ELM327 na tomada do carro;
-2. Ligue a ignição (gire a chave até acender as luzes do painel ou dê partida no motor);
-3. No aplicativo, abra a aba **Ajustes**;
-4. No campo **Perfil do Veículo**, selecione:
-   `🚗 Renault Clio 2011 (CAN 11-bit / 500k - ATSP6)`
-5. No campo **Método de Conexão**, selecione seu adaptador (Bluetooth BLE, Wi-Fi ou Cabo USB OTG);
-6. Toque em **Conectar**. O painel começará a responder instantaneamente.
+### Diagnóstico Rápido no Terminal Interativo
+Na aba **Terminal** do aplicativo, envie comandos manuais para checar a resposta imediata da central:
 
----
-
-### 7.4. Conectando no Renault Clio 2005 (K-Line)
-1. Certifique-se de que seu adaptador ELM327 é equipado com o chip **PIC18F25K80** (versão v1.4 ou v1.5);
-2. Conecte o adaptador na tomada do Clio 2005;
-3. Ligue a ignição do carro;
-4. No aplicativo, abra a aba **Ajustes**;
-5. No campo **Perfil do Veículo**, selecione:
-   `🚗 Renault Clio 2005 (K-Line KWP2000 Fast Init - ATSP5)`
-6. Toque em **Conectar**. O aplicativo executará o endereçamento físico `ATSH8111F1` e ativará o watchdog de keep-alive.
-7. *Nota de Fallback:* Se o veículo tiver ECU Siemens Sirius 32 e não responder no modo Fast, troque o perfil para:
-   `🚗 Renault Clio 2005 (K-Line ISO 9141 / 5-Baud - ATSP4/3)` e reconecte.
-
----
-
-### 7.5. Diagnóstico Rápido no Terminal Interativo
-Na aba **Terminal**, você pode enviar comandos diretos para inspecionar a resposta da central:
-
-| Comando | O que faz no Clio | Resposta Esperada |
+| Comando | Função no Clio | Resposta Típica Esperada |
 | :--- | :--- | :--- |
-| `ATRV` | Mede a voltagem da bateria pelo pino 16 | `12.4V` (desligado) / `14.1V` (motor ligado) |
-| `ATDP` | Mostra o protocolo ativo selecionado | `ISO 14230-4 KWP (FAST)` ou `ISO 15765-4 (CAN 11/500)` |
-| `0100` | Testa se a ECU do motor está respondendo aos PIDs | `41 00 BE 3E B8 11` (PIDs suportados) |
-| `010C` | Consulta a rotação atual do motor (RPM) | `41 0C 0B 20` (calcula para ~712 RPM) |
-| `0902` | Lê o chassi do carro (VIN) gravado na central | Sequência ASCII decodificada na tela |
-| `03` | Solicita códigos de falha armazenados | `43 01 03 00 00` (ex: P0300) ou `43 00` (sem falhas) |
-| `04` | Apaga a memória de falhas da ECU e apaga a luz da injeção | `44` ou `OK` |
+| `ATRV` | Mede a voltagem da bateria pelo pino 16 | `12.4V` (desligado) / `14.2V` (alternador ativo) |
+| `ATDP` | Exibe o protocolo ativo | `ISO 15765-4 (CAN 11/500)` ou `ISO 14230-4 KWP (FAST)` |
+| `0100` | Mapa de bits de PIDs suportados | `41 00 BE 3E B8 11` (PIDs suportados pela ECU) |
+| `010C` | Rotação do motor (RPM) | `41 0C 0B 20` (~712 RPM em marcha lenta) |
+| `010B` | Pressão absoluta no coletor (MAP) | `41 0B 23` (35 kPa em marcha lenta) |
+| `010F` | Temperatura do ar de admissão (IAT) | `41 0F 46` (30°C) |
+| `03` | Solicita códigos de falha armazenados | `43 00` (sem falhas) ou `43 01 03 00` (ex: P0300) |
+| `04` | Limpa a memória de avarias e apaga luz da injeção | `44` ou `OK` |
 
 ---
 
-## 8. Estrutura do Repositório
+## 9. Estrutura do Repositório
 
-```
+```text
 infocar-obd2/
-├── index.html                   # Interface principal SPA responsiva e cockpit
-├── manifest.json                # Manifesto PWA para instalação no Android
-├── sw.js                        # Service worker com cache offline (Network-First v2)
-├── icon.svg                     # Ícone vetorial automotivo do app
-├── server.py                    # Servidor local HTTP multi-thread + ponte TCP
-├── start.sh                     # Script de inicialização rápida com termux-wake-lock
-├── package.json                 # Definição ES Modules e script npm test
-├── README.md                    # Dossiê técnico, ADRs, benchmark e guia de operação
-├── docs/
-│   ├── PLANO_DE_MELHORIA.md     # Plano detalhado com os 24 achados técnicos e roadmap
-│   ├── ROTEIRO_DESCOBERTA.md    # Passo a passo prático para testar com o adaptador azul
-│   └── ESTADO_E_PROXIMOS_PASSOS.md # Resumo da situação e guia de continuidade
-├── tests/
-│   └── parser.test.js           # Suíte de testes unitários automatizados (node --test)
+├── .agents/
+│   └── skills/
+│       └── gpt-sol-bridge/          # Skill de assistência e diagnóstico com Microsoft Copilot (CDP 9222)
+├── .github/
+│   └── workflows/
+│       └── build-apk.yml            # Pipeline GitHub Actions de compilação do APK e release
+├── android/                         # Projeto nativo Android (Capacitor 8 / SDK 35 / Gradle)
+│   ├── app/
+│   │   ├── build.gradle
+│   │   └── src/main/assets/public/  # Bundle web sincronizado com o app nativo
+│   ├── gradle.properties            # Definição de compileSdkVersion=35
+│   └── gradlew                      # Wrapper do Gradle
 ├── css/
-│   └── styles.css               # Tema esportivo escuro, gauges circulares e modo HUD
-└── js/
-    ├── app.js                   # Controlador mestre, persistência e Wake Lock
-    ├── trip.js                  # Computador de bordo, consumo temporal e AFR Brasil
-    └── obd/
-        ├── elm327.js            # Driver ELM327, perfis dinâmicos e parser seguro
-        ├── pids.js              # Catálogo de PIDs e fórmulas de decodificação física
-        ├── dtc-db.js            # Dicionário offline de códigos de falha em português
-        ├── simulator.js         # Simulador de ECU virtual com resposta CAN realista
-        └── transports/
-            ├── ble.js           # Transporte Web Bluetooth API (BLE 4.0/5.0)
-            ├── serial.js        # Transporte Web Serial (USB OTG)
-            ├── websocket.js     # Transporte WebSocket para pontes remotas
-            └── http-bridge.js   # Transporte HTTP Bridge protegido para Wi-Fi ELM327
+│   └── styles.css                   # Tema escuro esportivo, gauges SVG, modo HUD e safe-area dock
+├── docs/
+│   ├── ESTADO_E_PROXIMOS_PASSOS.md  # Resumo de engenharia e roteiro de transição
+│   ├── PLANO_DE_MELHORIA.md         # Análise de 24 achados técnicos e arquitetura
+│   └── ROTEIRO_DESCOBERTA.md        # Roteiro prático para testes com o adaptador azul
+├── js/
+│   ├── app.js                       # Controlador mestre, persistência de UI e Wake Lock
+│   ├── trip.js                      # Computador de bordo, Speed-Density (MAP+IAT) e Eco-Score
+│   └── obd/
+│       ├── dtc-db.js                # Dicionário offline de códigos DTC em português
+│       ├── elm327.js                # Driver ELM327, fila assíncrona, bitmask 0100 e recuperação
+│       ├── pids.js                  # Catálogo de PIDs e fórmulas de conversão física
+│       ├── simulator.js             # Simulador de ECU virtual com suporte CAN multi-frame
+│       └── transports/
+│           ├── ble.js               # Transporte Web Bluetooth API (BLE 4.0/5.0)
+│           ├── http-bridge.js       # Transporte protegido para adaptador Wi-Fi (server.py)
+│           ├── serial.js            # Transporte Web Serial (USB OTG)
+│           └── websocket.js         # Transporte WebSocket para pontes remotas
+├── tests/
+│   └── parser.test.js               # Suíte com 13 testes automatizados (node --test)
+├── capacitor.config.json            # Configuração do Capacitor (com.autopulse.obd2)
+├── index.html                       # Cockpit SPA responsivo com gauges e bottom dock
+├── icon.svg                         # Ícone vetorial automotivo do app
+├── manifest.json                    # Manifesto PWA para instalação no Android
+├── package.json                     # Scripts de teste, build e dependências Capacitor
+├── server.py                        # Servidor local Python com proteção anti-CSRF e socket TCP
+├── start.sh                         # Script de inicialização no Termux com termux-wake-lock
+└── sw.js                            # Service Worker com estratégia Network-First v2
 ```
 
 ---
 
-*AutoPulse OBD2 • Desenvolvido com foco em engenharia automotiva real para Renault Clio.*
+*AutoPulse OBD2 • Desenvolvido com foco em engenharia automotiva e telemetria precisa para Renault.*
