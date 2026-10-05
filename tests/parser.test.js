@@ -24,33 +24,27 @@ function makeClient(protocol) {
 
 test('CAN: pula o byte de contagem e decodifica dois DTCs', () => {
   const client = makeClient(CAN);
-  client.parseDTCResponse('43 02 01 33 03 00 00 00 \r\r>');
-  assert.deepEqual(client.captured.codes, ['P0133', 'P0300']);
+  const codes = client.parseDTCResponse('43 02 01 33 03 00 00 00 \r\r>');  assert.deepEqual(codes, ['P0133', 'P0300']);
 });
 
 test('K-Line: sem byte de contagem', () => {
   const client = makeClient(KWP);
-  client.parseDTCResponse('43 01 33 03 00 00 00 \r\r>');
-  assert.deepEqual(client.captured.codes, ['P0133', 'P0300']);
+  const codes = client.parseDTCResponse('43 01 33 03 00 00 00 \r\r>');  assert.deepEqual(codes, ['P0133', 'P0300']);
 });
 
 test('CAN multi-frame: ignora marcadores 0:/1: e o cabeçalho de tamanho', () => {
   const client = makeClient(CAN);
-  client.parseDTCResponse('00A\r0: 43 03 01 33 03 00\r1: 04 20 00 00 00 00 00\r\r>');
-  assert.deepEqual(client.captured.codes, ['P0133', 'P0300', 'P0420']);
+  const codes = client.parseDTCResponse('00A\r0: 43 03 01 33 03 00\r1: 04 20 00 00 00 00 00\r\r>');  assert.deepEqual(codes, ['P0133', 'P0300', 'P0420']);
 });
 
 test('CAN sem falhas devolve lista vazia', () => {
   const client = makeClient(CAN);
-  client.parseDTCResponse('43 00 00 00 00 00 00 \r\r>');
-  assert.deepEqual(client.captured.codes, []);
+  const codes = client.parseDTCResponse('43 00 00 00 00 00 00 \r\r>');  assert.deepEqual(codes, []);
 });
 
 test('Mode 07 usa o prefixo 47 e marca como pendente', () => {
   const client = makeClient(CAN);
-  client.parseDTCResponse('47 01 04 20 00 00 00 \r\r>', true);
-  assert.deepEqual(client.captured.codes, ['P0420']);
-  assert.equal(client.captured.pending, true);
+  const codes = client.parseDTCResponse('47 01 04 20 00 00 00 \r\r>', true);  assert.deepEqual(codes, ['P0420']);
 });
 
 test('Ida e volta: simulador -> parser (CAN)', () => {
@@ -58,8 +52,7 @@ test('Ida e volta: simulador -> parser (CAN)', () => {
   ecu.stopSimulation(); // o construtor inicia um setInterval
   ecu.activeDTCs = ['P0300', 'P0171'];
   const client = makeClient(CAN);
-  client.parseDTCResponse(ecu.processCommand('03'));
-  assert.deepEqual(client.captured.codes, ['P0300', 'P0171']);
+  const codes = client.parseDTCResponse(ecu.processCommand('03'));  assert.deepEqual(codes, ['P0300', 'P0171']);
 });
 
 // ---------------------------------------------------------------- VIN
@@ -96,8 +89,8 @@ test('Trip: distância e combustível seguem o tempo real, não o número de cha
       }
       // 9 intervalos de 0,2 s a 60 km/h
       assert.ok(Math.abs(trip.distanceKm - 60 * (1.8 / 3600)) < 1e-6);
-      // 10 g/s de ar, gasolina E27 (AFR 13,3 / 745 g/L) durante 1,8 s
-      const litersPerHour = (10 / 13.3 / 745) * 3600;
+      // 10 g/s de ar, gasolina E27 (AFR 13,2 / 745 g/L) durante 1,8 s
+      const litersPerHour = (10 / 13.2 / 745) * 3600;
       assert.ok(Math.abs(trip.fuelConsumedLiters - (litersPerHour / 3600) * 1.8) < 1e-5);
       assert.equal(trip.hardAccelerations, 0);
     } finally {

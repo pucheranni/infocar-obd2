@@ -5,6 +5,7 @@ import { BLETransport } from './transports/ble.js';
 import { SerialTransport } from './transports/serial.js';
 import { WebSocketTransport } from './transports/websocket.js';
 import { HTTPBridgeTransport } from './transports/http-bridge.js';
+import { BtClassicTransport } from './transports/bt-classic.js';
 
 export const ConnectionStatus = {
   DISCONNECTED: 'Desconectado',
@@ -32,7 +33,14 @@ export const VEHICLE_PROFILES = {
       'ATAT1',     // Adaptive Timing Auto 1
       'ATST32'     // Timeout agressivo (~128ms) para telemetria rápida
     ],
-    pidsToPoll: ['010C', '010D', '0105', '0104', '0111', '0152', 'ATRV'],
+    // RPM/MAP/velocidade/TPS a cada volta (base do consumo); demais intercalados
+    pidsToPoll: [
+      '010C', '010B', '010D', '0111', '010F',
+      '010C', '010B', '010D', '0111', '0106',
+      '010C', '010B', '010D', '0111', '0107',
+      '010C', '010B', '010D', '0111', '0105',
+      '010C', '010B', '010D', '0111', '0104', 'ATRV'
+    ],
     keepAliveIntervalMs: 0
   },
   clio2005_fast: {
@@ -92,7 +100,7 @@ export class ELM327Client {
     this.status = ConnectionStatus.DISCONNECTED;
     this.activeTransport = null;
     this.transportType = 'simulator'; // 'simulator', 'ble', 'wifi', 'serial'
-    this.vehicleProfile = 'generic'; // Detecção automática até validar os perfis em carro real
+    this.vehicleProfile = 'clio2011_can';
     this.virtualECU = null;
     this.keepAliveInterval = null;
     
@@ -106,7 +114,8 @@ export class ELM327Client {
     this.pollingInterval = null;
     this.pollingRateMs = 200; // 5 Hz
     this.isPolling = false;
-    this.pidsToPoll = ['010C', '010D', '0105', '0104', '0111', 'ATRV'];
+    this.pidsToPoll = [...VEHICLE_PROFILES.clio2011_can.pidsToPoll];
+    this.unsupportedPids = new Set();
     this.pollIndex = 0;
     
     // Vehicle & ECU state
@@ -120,6 +129,9 @@ export class ELM327Client {
       voltage: 0,
       intakeTemp: 0,
       maf: 0,
+      map: 0,
+      stft: 0,
+      ltft: 0,
       ethanolPercentage: null,
       vin: '---',
       protocol: '---',
@@ -152,6 +164,9 @@ export class ELM327Client {
     this.setStatus(ConnectionStatus.CONNECTING);
     this.buffer = '';
     this.commandQueue = [];
+    this.unsupportedPids = new Set();
+    this.noDataCount = {};
+    this.pollIndex = 0;
 
     try {
       if (type === 'simulator') {
@@ -172,6 +187,14 @@ export class ELM327Client {
           }
         };
         this.log('Conectado ao Simulador Virtual de ECU & ELM327', 'success');
+      } else if (type === 'btclassic') {
+        this.activeTransport = new BtClassicTransport();
+        const devName = await this.activeTransport.connect(
+          options.btAddress,
+          (data) => this.handleRawData(data),
+          () => this.handleUnexpectedDisconnect()
+        );
+        this.log(`Conectado via Bluetooth Clássico: ${devName}`, 'success');
       } else if (type === 'ble') {
         this.activeTransport = new BLETransport();
         const devName = await this.activeTransport.connect(
@@ -282,6 +305,7 @@ export class ELM327Client {
   }
 
   handleUnexpectedDisconnect() {
+    if (!this.activeTransport) return;
     this.log('Dispositivo OBD2 desconectado inesperadamente.', 'warn');
     this.disconnect();
   }
@@ -289,16 +313,37 @@ export class ELM327Client {
   disconnect() {
     this.stopPolling();
     this.stopKeepAlive();
-    if (this.activeTransport) {
-      try { this.activeTransport.disconnect(); } catch (e) {}
-      this.activeTransport = null;
+    // Cancela comando em andamento e esvazia a fila (senão a fila trava para sempre)
+    const pending = [];
+    if (this.currentCommand) pending.push(this.currentCommand);
+    pending.push(...this.commandQueue);
+    this.currentCommand = null;
+    this.commandQueue = [];
+    this.isProcessingQueue = false;
+    this.buffer = '';
+    pending.forEach(item => {
+      if (item.timer) clearTimeout(item.timer);
+      try { item.reject(new Error('Conexão encerrada')); } catch (e) {}
+    });
+
+    const transport = this.activeTransport;
+    this.activeTransport = null;
+    if (transport) {
+      try { transport.disconnect(); } catch (e) {}
     }
     this.setStatus(ConnectionStatus.DISCONNECTED);
     this.log('Conexão OBD2 finalizada.', 'info');
   }
 
+  isConnected() {
+    return !!this.activeTransport && this.status === ConnectionStatus.CONNECTED;
+  }
+
   // Enqueue a command with promise resolution
   executeCommand(command, timeoutMs = 2500) {
+    if (!this.activeTransport) {
+      return Promise.reject(new Error('Adaptador OBD2 desconectado. Conecte em Ajustes.'));
+    }
     return new Promise((resolve, reject) => {
       this.commandQueue.push({
         command: command.trim().toUpperCase(),
@@ -313,32 +358,33 @@ export class ELM327Client {
 
   async processQueue() {
     if (this.isProcessingQueue || this.commandQueue.length === 0) return;
+    if (!this.activeTransport) return;
     this.isProcessingQueue = true;
 
-    this.currentCommand = this.commandQueue.shift();
+    const item = this.commandQueue.shift();
+    this.currentCommand = item;
     this.buffer = '';
 
     // Set command timeout guard
-    this.currentCommand.timer = setTimeout(() => {
-      if (this.currentCommand) {
-        this.log(`Timeout aguardando resposta do comando: ${this.currentCommand.command}`, 'warn');
-        const resolve = this.currentCommand.resolve;
+    item.timer = setTimeout(() => {
+      if (this.currentCommand === item) {
+        this.log(`Timeout aguardando resposta do comando: ${item.command}`, 'warn');
         this.currentCommand = null;
         this.isProcessingQueue = false;
-        resolve('TIMEOUT');
+        item.resolve('TIMEOUT');
         this.processQueue();
       }
-    }, this.currentCommand.timeoutMs);
+    }, item.timeoutMs);
 
     try {
-      if (this.activeTransport) {
-        await this.activeTransport.send(this.currentCommand.command);
-      }
+      await this.activeTransport.send(item.command);
     } catch (err) {
-      clearTimeout(this.currentCommand.timer);
-      this.currentCommand.reject(err);
-      this.currentCommand = null;
-      this.isProcessingQueue = false;
+      clearTimeout(item.timer);
+      if (this.currentCommand === item) {
+        this.currentCommand = null;
+        this.isProcessingQueue = false;
+      }
+      item.reject(err);
       this.processQueue();
     }
   }
@@ -383,6 +429,16 @@ export class ELM327Client {
     }
 
     // Check for Mode 01 response (starts with 41)
+    if (cmd.startsWith('01') && /NO DATA/i.test(cleaned) && this.isPolling) {
+      // PID não suportado pela ECU: tira do polling depois de algumas falhas
+      this.noDataCount = this.noDataCount || {};
+      this.noDataCount[cmd] = (this.noDataCount[cmd] || 0) + 1;
+      if (this.noDataCount[cmd] >= 3 && !['010C', '010D'].includes(cmd)) {
+        this.unsupportedPids.add(cmd);
+        this.log(`PID ${cmd} não suportado pela ECU — removido da leitura.`, 'warn');
+      }
+      return;
+    }
     if (cmd.startsWith('01') && cleaned.includes('41')) {
       const lines = cleaned.split(/[\r\n]+/);
       for (const line of lines) {
@@ -398,11 +454,7 @@ export class ELM327Client {
       return;
     }
 
-    // Check for Mode 03 / Mode 07 (DTCs)
-    if (cmd === '03' || cmd === '07') {
-      this.parseDTCResponse(cleaned, cmd === '07');
-      return;
-    }
+    // Mode 03 / 07 são tratados em requestDTCs() (evita que o 07 apague o resultado do 03)
 
     // Check for Mode 04 (Clear DTCs)
     if (cmd === '04') {
@@ -410,6 +462,7 @@ export class ELM327Client {
         this.log('Códigos de falha (DTC) apagados com sucesso na ECU!', 'success');
         this.vehicleData.dtcCount = 0;
         this.vehicleData.milStatus = false;
+        if (this.virtualECU) this.virtualECU.clearDTCs();
         if (this.onDTCsReceived) this.onDTCsReceived([]);
         this.notifyUpdate();
       }
@@ -464,6 +517,15 @@ export class ELM327Client {
         this.vehicleData.milStatus = (bytes[0] & 0x80) !== 0;
         this.vehicleData.dtcCount = bytes[0] & 0x7F;
         break;
+      case '0B': // MAP (kPa) — base do cálculo de consumo no Clio (sem MAF)
+        this.vehicleData.map = bytes[0];
+        break;
+      case '06': // STFT banco 1 (%)
+        this.vehicleData.stft = Math.round(((bytes[0] - 128) * 100 / 128) * 10) / 10;
+        break;
+      case '07': // LTFT banco 1 (%)
+        this.vehicleData.ltft = Math.round(((bytes[0] - 128) * 100 / 128) * 10) / 10;
+        break;
       case '52': // Ethanol Percentage (PID 0152 - Veículos Hi-Flex Brasil)
         this.vehicleData.ethanolPercentage = Math.round((bytes[0] * 100) / 255);
         this.log(`Teor de Etanol ECU (Hi-Flex): ${this.vehicleData.ethanolPercentage}%`, 'info');
@@ -473,6 +535,7 @@ export class ELM327Client {
     this.notifyUpdate();
   }
 
+  // Extrai a lista de DTCs de uma resposta de modo 03 (confirmados) ou 07 (pendentes)
   parseDTCResponse(response, isPending = false) {
     const codes = [];
     const prefixHex = isPending ? '47' : '43';
@@ -487,8 +550,9 @@ export class ELM327Client {
     // Em CAN (ISO 15765-4) a resposta dos modos 03/07 traz um byte de contagem de DTCs
     // logo após o SID (ex.: "43 02 01 33 ..."); em K-Line (ISO 9141/14230) não traz.
     const dtcProfile = VEHICLE_PROFILES[this.vehicleProfile];
-    const isCAN = /CAN/i.test(this.vehicleData.protocol || '') ||
-      (dtcProfile && dtcProfile.protocol === 'ATSP6');
+    const isCAN = this.vehicleData.protocol && this.vehicleData.protocol !== '---'
+      ? /CAN/i.test(this.vehicleData.protocol)
+      : (dtcProfile && dtcProfile.protocol === 'ATSP6');
     
     for (let i = 0; i < tokens.length; i++) {
       if (tokens[i] === prefixHex) {
@@ -526,25 +590,26 @@ export class ELM327Client {
       }
     }
 
-    this.vehicleData.dtcCount = codes.length;
-    this.vehicleData.milStatus = codes.length > 0;
-    this.notifyUpdate();
-
-    if (this.onDTCsReceived) {
-      this.onDTCsReceived(codes, isPending);
-    }
+    return codes;
   }
 
   parseVINResponse(response) {
-    // Collect all ASCII bytes after 49 02
-    const tokens = response.replace(/[\r\n]+/g, ' ').split(/\s+/);
+    // Process line by line or scan frames
+    const lines = response.split(/[\r\n]+/);
     const vinChars = [];
     
-    for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i] === '49' && tokens[i + 1] === '02') {
-        const lineOffset = i + 3; // Skip 49 02 <frame_num>
-        for (let j = lineOffset; j < tokens.length && j < lineOffset + 7; j++) {
-          const code = parseInt(tokens[j], 16);
+    for (const line of lines) {
+      const tokens = line.trim().split(/\s+/).filter(t => t && !/^[0-9A-F]:$/i.test(t));
+      const idx = tokens.indexOf('49');
+      if (idx !== -1 && tokens[idx + 1] === '02') {
+        const frameNum = tokens[idx + 2];
+        const dataBytes = tokens.slice(idx + 3);
+        // Standard ISO 15765-4 Mode 09 PID 02:
+        // Frame 01: 3 VIN bytes (plus optionally count)
+        // Subsequent frames: up to 7 VIN bytes
+        for (const hex of dataBytes) {
+          if (hex === '>' || hex === 'OK') break;
+          const code = parseInt(hex, 16);
           if (code >= 32 && code <= 126) {
             vinChars.push(String.fromCharCode(code));
           }
@@ -560,29 +625,61 @@ export class ELM327Client {
     }
   }
 
+  // Polling sequencial: só envia o próximo PID quando o anterior respondeu.
+  // Nunca enfileira mais de um comando de polling, então comandos manuais não ficam presos.
   startPolling() {
     this.stopPolling();
     this.isPolling = true;
+    const session = (this.pollSession = (this.pollSession || 0) + 1);
 
-    this.pollingInterval = setInterval(async () => {
-      if (!this.isPolling || this.commandQueue.length > 3) return;
-
-      const pid = this.pidsToPoll[this.pollIndex];
-      this.pollIndex = (this.pollIndex + 1) % this.pidsToPoll.length;
-
-      try {
-        await this.executeCommand(pid, 800);
-      } catch (e) {
-        // Polling will continue
+    const loop = async () => {
+      while (this.isPolling && this.pollSession === session && this.activeTransport) {
+        const started = Date.now();
+        if (this.commandQueue.length === 0) {
+          let pid = null;
+          for (let i = 0; i < this.pidsToPoll.length; i++) {
+            const cand = this.pidsToPoll[this.pollIndex];
+            this.pollIndex = (this.pollIndex + 1) % this.pidsToPoll.length;
+            if (!this.unsupportedPids.has(cand)) { pid = cand; break; }
+          }
+          if (!pid) break;
+          try {
+            await this.executeCommand(pid, 1000);
+          } catch (e) {
+            break; // desconectado
+          }
+        }
+        // Ritmo mínimo entre PIDs (configurável em Ajustes) dividido pelo nº de PIDs rápidos
+        const minGap = Math.max(20, this.pollingRateMs / 4);
+        const wait = minGap - (Date.now() - started);
+        await new Promise(r => setTimeout(r, Math.max(10, wait)));
       }
-    }, this.pollingRateMs);
+    };
+    loop();
   }
 
   stopPolling() {
     this.isPolling = false;
+    this.pollSession = (this.pollSession || 0) + 1;
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
+    }
+  }
+
+  // Executa uma ação com o polling pausado e o retoma depois
+  async withPollingPaused(fn) {
+    const was = this.isPolling;
+    if (was) this.stopPolling();
+    // espera o PID em voo terminar
+    const t0 = Date.now();
+    while (this.isProcessingQueue && Date.now() - t0 < 1500) {
+      await new Promise(r => setTimeout(r, 20));
+    }
+    try {
+      return await fn();
+    } finally {
+      if (was && this.activeTransport) this.startPolling();
     }
   }
 
@@ -594,18 +691,44 @@ export class ELM327Client {
 
   // Diagnostic action triggers
   async requestDTCs() {
-    this.log('Varrendo códigos de falha (DTC)...', 'info');
-    await this.executeCommand('03', 4000);
-    await this.executeCommand('07', 4000);
+    if (!this.isConnected()) throw new Error('Adaptador OBD2 desconectado. Conecte em Ajustes.');
+    return this.withPollingPaused(async () => {
+      this.log('Varrendo códigos de falha (DTC)...', 'info');
+      const map = new Map();
+      const r03 = await this.executeCommand('03', 5000);
+      this.parseDTCResponse(r03, false).forEach(c => map.set(c, { code: c, isConfirmed: true, isPending: false }));
+      const r07 = await this.executeCommand('07', 5000);
+      this.parseDTCResponse(r07, true).forEach(c => {
+        if (map.has(c)) map.get(c).isPending = true;
+        else map.set(c, { code: c, isConfirmed: false, isPending: true });
+      });
+      const list = [...map.values()];
+      const confirmed = list.filter(d => d.isConfirmed).length;
+      this.vehicleData.dtcCount = confirmed;
+      this.vehicleData.milStatus = confirmed > 0;
+      this.notifyUpdate();
+      if (this.onDTCsReceived) this.onDTCsReceived(list);
+      return list;
+    });
   }
 
   async clearDTCs() {
-    this.log('Enviando comando para apagar códigos de falha e apagar luz de injeção...', 'warn');
-    await this.executeCommand('04', 3000);
+    if (!this.isConnected()) throw new Error('Adaptador OBD2 desconectado. Conecte em Ajustes.');
+    return this.withPollingPaused(async () => {
+      this.log('Enviando comando para apagar códigos de falha e apagar luz de injeção...', 'warn');
+      const resp = await this.executeCommand('04', 5000);
+      if (!/44|OK/.test(resp)) throw new Error(`ECU não confirmou (resposta: ${resp.replace(/[\r\n>]/g, ' ').trim()})`);
+      return true;
+    });
+  }
+
+  async sendManual(cmd, timeoutMs = 3500) {
+    if (!this.isConnected()) throw new Error('Adaptador OBD2 desconectado. Conecte em Ajustes.');
+    return this.withPollingPaused(() => this.executeCommand(cmd, timeoutMs));
   }
 
   async requestVIN() {
-    await this.executeCommand('0902', 3000);
+    try { await this.executeCommand('0902', 3000); } catch (e) {}
   }
 
   // Test injection in simulator mode
@@ -613,6 +736,8 @@ export class ELM327Client {
     if (this.virtualECU) {
       this.virtualECU.injectDTC(code);
       this.log(`Falha simulada injetada na ECU: ${code}`, 'warn');
+      return true;
     }
+    return false;
   }
 }

@@ -193,6 +193,16 @@ export class VirtualECU {
         const vA = Math.floor(vScaled / 256).toString(16).padStart(2, '0').toUpperCase();
         const vB = (vScaled % 256).toString(16).padStart(2, '0').toUpperCase();
         return `41 42 ${vA} ${vB}\r\r>`;
+      case '0B': { // MAP kPa (Clio 2011 usa MAP, não MAF)
+        const map = Math.round(Math.min(98, 28 + this.throttle * 0.95));
+        return `41 0B ${map.toString(16).padStart(2, '0').toUpperCase()}\r\r>`;
+      }
+      case '06': // STFT banco 1: (A-128)*100/128
+      case '07': { // LTFT banco 1
+        const pct = pid === '06' ? Math.sin(Date.now() / 900) * 4 : 2.3;
+        const a = Math.round(pct * 128 / 100 + 128);
+        return `41 ${pid} ${a.toString(16).padStart(2, '0').toUpperCase()}\r\r>`;
+      }
       default:
         return 'NO DATA\r\r>';
     }

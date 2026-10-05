@@ -2,7 +2,12 @@
 export class TripComputer {
   constructor() {
     this.fuelPricePerLiter = 5.89; // Default BRL R$/L
-    this.fuelType = 'gasoline';   // 'gasoline' (gasolina C/E27, AFR ~13.3) or 'ethanol' (AFR 9.0)
+    this.fuelType = 'gasoline';   // 'gasoline' (E27), 'ethanol' (E100 hidratado) ou 'mix'
+    this.ethanolMix = 0.5;        // fração de etanol hidratado no tanque quando fuelType = 'mix'
+    this.displacementL = 1.0;     // Clio 2011 1.0 16V Hi-Flex (D4D). Use 1.6 para o K4M.
+    this.volumetricEff = 0.85;    // Eficiência volumétrica média de um 16V aspirado
+    this.calibration = 1.0;       // Ajuste do usuário (litros bomba ÷ litros app)
+    this.airSource = '---';       // 'MAF' | 'MAP' | 'RPM' (estimativa)
     
     // Trip metrics
     this.startTime = null;
@@ -55,7 +60,32 @@ export class TripComputer {
     this.ecoScore = 100;
   }
 
-  update(speed, maf, rpm) {
+  // Propriedades da mistura no tanque: AFR estequiométrico (base massa) e densidade (g/L).
+  // Gasolina C (E27): AFR 13.2, 745 g/L. Etanol hidratado (E100): AFR 8.4, 809 g/L.
+  getFuelProps() {
+    let e = 0;
+    if (this.fuelType === 'ethanol') e = 1;
+    else if (this.fuelType === 'mix') e = Math.min(1, Math.max(0, this.ethanolMix));
+    const mG = (1 - e) * 745;
+    const mE = e * 809;
+    return { afr: (mG * 13.2 + mE * 8.4) / (mG + mE), density: mG + mE };
+  }
+
+  // Massa de ar admitida (g/s). O Clio 2011 não tem MAF: usa speed-density com MAP + IAT.
+  estimateAirMass(maf, rpm, extra) {
+    if (maf && maf > 0) { this.airSource = 'MAF'; return maf; }
+    const map = extra.map;
+    if (map && map > 0 && rpm > 0) {
+      this.airSource = 'MAP';
+      const iatK = (extra.intakeTemp ?? 30) + 273.15;
+      // m = P·V/(R·T) por ciclo [kPa·L = J; R_ar = 0,287 J/(g·K)] × ciclos/s (4 tempos = rpm/120)
+      return (map * this.displacementL * this.volumetricEff) / (0.287 * iatK) * (rpm / 120);
+    }
+    this.airSource = 'RPM';
+    return Math.max(1.0, (rpm * this.displacementL * 0.5) / 60);
+  }
+
+  update(speed, maf, rpm, extra = {}) {
     const now = Date.now();
     if (!this.startTime) this.start();
 
@@ -107,26 +137,25 @@ export class TripComputer {
 
     this.lastSpeed = speed;
 
-    // Calculate fuel consumption:
-    // Air Fuel Ratio (AFR): ~13.3:1 para gasolina brasileira (E27), ~9.0:1 para etanol
-    // Densidade: ~745 g/L gasolina C, ~789 g/L etanol
-    const afr = this.fuelType === 'ethanol' ? 9.0 : 13.3;
-    const density = this.fuelType === 'ethanol' ? 789 : 745;
+    const { afr, density } = this.getFuelProps();
+    const air = this.estimateAirMass(maf, rpm, extra);
 
-    let effectiveMaf = maf;
-    // Fallback if MAF is 0: estimate from RPM (aproximação grosseira; o Clio usa sensor MAP — ver plano, Fase 3)
-    if (!effectiveMaf || effectiveMaf <= 0) {
-      effectiveMaf = Math.max(1.5, (rpm * 1.6 * 0.5) / 60); // approx estimation for 1.6L engine
-    }
+    // Correção de malha fechada da ECU (STFT + LTFT, PIDs 06/07)
+    const trim = 1 + ((extra.stft || 0) + (extra.ltft || 0)) / 100;
 
-    // Fuel grams/sec = MAF / AFR
-    // Liters/sec = (MAF / AFR) / density
-    // Liters/hour = Liters/sec * 3600
-    this.instantLitersPerHour = (effectiveMaf / afr / density) * 3600;
+    // Cut-off em desaceleração: borboleta fechada, rotação alta e carro andando → injeção cortada
+    const tps = extra.throttlePos;
+    const decelCut = tps !== undefined && tps <= 2 && rpm > 1400 && speed > 10;
+
+    this.instantLitersPerHour = decelCut
+      ? 0
+      : (air / afr * trim / density) * 3600 * this.calibration;
 
     if (speed > 3) {
-      // km/L = (km/h) / (L/h)
-      this.instantKmPerLiter = Math.min(45, Math.max(0.5, speed / this.instantLitersPerHour));
+      // km/L = (km/h) / (L/h); em cut-off mostra o teto
+      this.instantKmPerLiter = this.instantLitersPerHour > 0
+        ? Math.min(45, Math.max(0.5, speed / this.instantLitersPerHour))
+        : 45;
     } else {
       this.instantKmPerLiter = 0; // idling in place (show L/h)
     }
@@ -175,7 +204,9 @@ export class TripComputer {
       estimatedCostBrl: this.getEstimatedCost(),
       hardAccelerations: this.hardAccelerations,
       hardBrakings: this.hardBrakings,
-      ecoScore: Math.round(this.ecoScore)
+      ecoScore: Math.round(this.ecoScore),
+      airSource: this.airSource,
+      fuelType: this.fuelType
     };
   }
 }

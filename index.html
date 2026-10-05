@@ -159,12 +159,12 @@
             <!-- MAF Sensor -->
             <div class="sensor-card">
               <div class="sensor-header">
-                <span class="sensor-title">Fluxo Ar (MAF)</span>
+                <span class="sensor-title">Pressão Coletor (MAP)</span>
                 <span class="sensor-icon">💨</span>
               </div>
               <div class="sensor-value-group">
                 <span id="val-maf" class="sensor-val">--</span>
-                <span class="sensor-unit">g/s</span>
+                <span class="sensor-unit">kPa</span>
               </div>
               <div class="sensor-bar">
                 <div id="bar-maf" class="sensor-bar-fill"></div>
@@ -245,6 +245,15 @@
               <div class="sensor-value-group">
                 <span id="trip-instant-kml" class="sensor-val">0.0</span>
                 <span class="sensor-unit">km/L</span>
+              </div>
+            </div>
+
+            <!-- Vazão instantânea -->
+            <div class="sensor-card">
+              <span class="sensor-title">Vazão de Combustível <small id="trip-air-source" style="opacity: .7;"></small></span>
+              <div class="sensor-value-group">
+                <span id="trip-instant-lh" class="sensor-val">0.0</span>
+                <span class="sensor-unit">L/h</span>
               </div>
             </div>
 
@@ -367,6 +376,7 @@
             <div class="form-group">
               <label for="select-conn-type">Método de Conexão</label>
               <select id="select-conn-type" class="form-select">
+                <option value="btclassic" selected>📲 Bluetooth Clássico ELM327 (App Android nativo)</option>
                 <option value="simulator">🚗 Modo Simulador de ECU (Teste sem Carro)</option>
                 <option value="ble">🔵 Bluetooth (ELM327 BLE / 4.0 / 5.0)</option>
                 <option value="wifi">📶 Wi-Fi OBD2 (192.168.0.10:35000 / Ponte TCP)</option>
@@ -377,11 +387,23 @@
             <div class="form-group">
               <label for="select-vehicle-profile">Perfil do Veículo (Protocolo ECU)</label>
               <select id="select-vehicle-profile" class="form-select">
-                <option value="generic" selected>🌐 Detecção automática do protocolo (recomendado p/ 1º teste)</option>
-                <option value="clio2011_can">🚗 Clio 2011 — CAN 500k (a validar)</option>
+                <option value="clio2011_can" selected>🚗 Clio 2011 — CAN 500k (ATSP6)</option>
+                <option value="generic">🌐 Detecção automática do protocolo (se o Clio 2011 falhar)</option>
                 <option value="clio2005_fast">🚗 Clio 2005 — K-Line KWP rápido (a validar)</option>
                 <option value="clio2005_slow">🚗 Clio 2005 — K-Line KWP/ISO lento (a validar)</option>
               </select>
+            </div>
+
+            <div id="bt-settings">
+              <div class="form-group">
+                <label for="select-bt-device">Adaptador pareado (pareie antes em Configurações &gt; Bluetooth do Android)</label>
+                <div style="display: flex; gap: 8px;">
+                  <select id="select-bt-device" class="form-select" style="flex: 1;">
+                    <option value="">Toque em 🔄 para listar</option>
+                  </select>
+                  <button type="button" id="btn-bt-refresh" class="btn btn-secondary" style="padding: 6px 12px;">🔄</button>
+                </div>
+              </div>
             </div>
 
             <div id="wifi-settings" style="display: none;">
@@ -407,14 +429,31 @@
             <div class="form-group">
               <label for="select-fuel-type">Tipo de Combustível</label>
               <select id="select-fuel-type" class="form-select">
-                <option value="gasoline">Gasolina (AFR 14.7:1)</option>
-                <option value="ethanol">Etanol (AFR 9.0:1)</option>
+                <option value="gasoline">Gasolina C (E27, AFR 13.2:1)</option>
+                <option value="ethanol">Etanol hidratado (E100, AFR 8.4:1)</option>
+                <option value="mix">Mistura no tanque (informe % de etanol)</option>
               </select>
+            </div>
+
+            <div class="form-group" id="group-ethanol-mix" style="display: none;">
+              <label for="input-ethanol-mix">% de etanol hidratado no tanque</label>
+              <input type="number" min="0" max="100" step="5" id="input-ethanol-mix" class="form-input" value="50">
             </div>
 
             <div class="form-group">
               <label for="input-fuel-price">Preço do Litro (R$)</label>
               <input type="number" step="0.01" id="input-fuel-price" class="form-input" value="5.89">
+            </div>
+
+            <div class="form-group">
+              <label for="input-displacement">Cilindrada do motor (L) — Clio 2011 1.0 16V = 1.0 / 1.6 16V = 1.6</label>
+              <input type="number" step="0.1" min="0.8" max="3" id="input-displacement" class="form-input" value="1.0">
+            </div>
+
+            <div class="form-group">
+              <label for="input-fuel-cal">Fator de calibração do consumo (1.00 = padrão)</label>
+              <input type="number" step="0.01" min="0.5" max="1.5" id="input-fuel-cal" class="form-input" value="1.00">
+              <small style="color: var(--text-secondary); font-size: 0.75rem;">Encha o tanque, rode, encha de novo: fator = litros reais da bomba ÷ litros do app.</small>
             </div>
 
             <div class="form-group">

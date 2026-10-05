@@ -166,9 +166,13 @@ class OBDRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         # Suppress spammy log messages for cleaner terminal
-        if '/api/' not in args[0]:
-            return
-        print(f"[HTTP] {args[0]} - {args[1]}")
+        try:
+            msg = format % args
+        except Exception:
+            msg = " ".join(str(a) for a in args)
+        # Mostra só chamadas da API e erros (ex.: 'Bad request' de HTTPS em porta HTTP)
+        if '/api/' in msg or 'code 4' in msg or 'code 5' in msg:
+            print(f"[HTTP] {msg}")
 
 
 def run_server(host, port):

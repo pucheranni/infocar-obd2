@@ -2,6 +2,7 @@
 import { ELM327Client, ConnectionStatus } from './obd/elm327.js';
 import { TripComputer } from './trip.js';
 import { lookupDTC } from './obd/dtc-db.js';
+import { listPairedDevices, isBtClassicAvailable } from './obd/transports/bt-classic.js';
 
 class AutoPulseApp {
   constructor() {
@@ -66,6 +67,8 @@ class AutoPulseApp {
     // Trip Computer
     this.tripEcoScore = document.getElementById('trip-eco-score');
     this.tripInstantKml = document.getElementById('trip-instant-kml');
+    this.tripInstantLh = document.getElementById('trip-instant-lh');
+    this.tripAirSource = document.getElementById('trip-air-source');
     this.tripAvgKml = document.getElementById('trip-avg-kml');
     this.tripDistance = document.getElementById('trip-distance');
     this.tripDuration = document.getElementById('trip-duration');
@@ -93,6 +96,48 @@ class AutoPulseApp {
     this.selectFuelType = document.getElementById('select-fuel-type');
     this.inputFuelPrice = document.getElementById('input-fuel-price');
     this.selectPollingRate = document.getElementById('select-polling-rate');
+    this.btSettings = document.getElementById('bt-settings');
+    this.selectBtDevice = document.getElementById('select-bt-device');
+    this.btnBtRefresh = document.getElementById('btn-bt-refresh');
+    this.inputEthanolMix = document.getElementById('input-ethanol-mix');
+    this.groupEthanolMix = document.getElementById('group-ethanol-mix');
+    this.inputDisplacement = document.getElementById('input-displacement');
+    this.inputFuelCal = document.getElementById('input-fuel-cal');
+  }
+
+  updateConnTypeUI() {
+    const t = this.selectConnType.value;
+    this.wifiSettings.style.display = t === 'wifi' ? 'block' : 'none';
+    this.btSettings.style.display = t === 'btclassic' ? 'block' : 'none';
+    this.groupEthanolMix.style.display = this.selectFuelType.value === 'mix' ? 'block' : 'none';
+  }
+
+  applyFuelSettings() {
+    this.trip.fuelType = this.selectFuelType.value;
+    const mix = parseFloat(this.inputEthanolMix.value);
+    if (!isNaN(mix)) this.trip.ethanolMix = Math.min(100, Math.max(0, mix)) / 100;
+    const disp = parseFloat(this.inputDisplacement.value);
+    if (!isNaN(disp) && disp > 0.5) this.trip.displacementL = disp;
+    const cal = parseFloat(this.inputFuelCal.value);
+    if (!isNaN(cal) && cal > 0.3) this.trip.calibration = cal;
+    const price = parseFloat(this.inputFuelPrice.value);
+    if (!isNaN(price) && price > 0) this.trip.fuelPricePerLiter = price;
+    this.updateConnTypeUI();
+  }
+
+  async refreshBtDevices(silent = false) {
+    try {
+      const devices = await listPairedDevices();
+      const saved = this.selectBtDevice.dataset.saved || this.selectBtDevice.value;
+      this.selectBtDevice.innerHTML = devices.length
+        ? devices.map(d => `<option value="${d.address}">${d.name || 'Sem nome'} (${d.address})</option>`).join('')
+        : '<option value="">Nenhum dispositivo pareado</option>';
+      const guess = devices.find(d => d.address === saved) ||
+        devices.find(d => /obd|elm|v-?link|vgate/i.test(d.name || ''));
+      if (guess) this.selectBtDevice.value = guess.address;
+    } catch (err) {
+      if (!silent) alert(err.message);
+    }
   }
 
   setupEventListeners() {
@@ -114,9 +159,15 @@ class AutoPulseApp {
     this.btnExitHud.addEventListener('click', () => this.toggleHUD(false));
 
     // Connection Select Change
-    this.selectConnType.addEventListener('change', (e) => {
-      this.wifiSettings.style.display = e.target.value === 'wifi' ? 'block' : 'none';
+    this.selectConnType.addEventListener('change', () => {
+      this.updateConnTypeUI();
+      if (this.selectConnType.value === 'btclassic') this.refreshBtDevices(true);
     });
+    this.btnBtRefresh.addEventListener('click', () => this.refreshBtDevices());
+
+    if (this.milIndicator) {
+      this.milIndicator.addEventListener('click', () => this.switchView('scanner'));
+    }
 
     if (this.selectVehicleProfile) {
       this.selectVehicleProfile.addEventListener('change', (e) => {
@@ -138,26 +189,42 @@ class AutoPulseApp {
     });
 
     // DTC Scanner Actions
+    const scanLabel = this.btnScanDTC.innerHTML;
     this.btnScanDTC.addEventListener('click', async () => {
+      if (!this.client.isConnected()) {
+        alert('Adaptador OBD2 não conectado. Vá em Ajustes e toque em Conectar.');
+        return;
+      }
       this.btnScanDTC.disabled = true;
       this.btnScanDTC.innerText = 'Escaneando...';
       try {
         await this.client.requestDTCs();
+      } catch (err) {
+        alert(`Erro na leitura de falhas: ${err.message}`);
       } finally {
         this.btnScanDTC.disabled = false;
-        this.btnScanDTC.innerHTML = `
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg> Escanear Falhas da ECU`;
+        this.btnScanDTC.innerHTML = scanLabel;
       }
     });
 
+    const clearLabel = this.btnClearDTC.innerHTML;
     this.btnClearDTC.addEventListener('click', async () => {
-      const confirmClear = confirm('Tem certeza que deseja apagar a memória de falhas da central (ECU) e resetar a luz de injeção?');
-      if (confirmClear) {
+      if (!this.client.isConnected()) {
+        alert('Adaptador OBD2 não conectado. Vá em Ajustes e toque em Conectar.');
+        return;
+      }
+      if (!confirm('Apagar a memória de falhas da ECU e a luz de injeção? (Faça com motor desligado e ignição ligada)')) return;
+      this.btnClearDTC.disabled = true;
+      this.btnClearDTC.innerText = 'Limpando...';
+      try {
         await this.client.clearDTCs();
         this.renderDTCs([]);
+        alert('Falhas apagadas com sucesso.');
+      } catch (err) {
+        alert(`Erro ao limpar falhas: ${err.message}`);
+      } finally {
+        this.btnClearDTC.disabled = false;
+        this.btnClearDTC.innerHTML = clearLabel;
       }
     });
 
@@ -165,34 +232,32 @@ class AutoPulseApp {
     this.btnInjectFault.addEventListener('click', () => {
       const sampleCodes = ['P0300', 'P0171', 'P0420', 'P0115', 'P0335'];
       const chosen = sampleCodes[Math.floor(Math.random() * sampleCodes.length)];
-      this.client.injectSimulatorFault(chosen);
-      alert(`Código de teste simulado (${chosen}) injetado na ECU! Clique em "Escanear Falhas da ECU" para diagnosticar.`);
+      if (this.client.injectSimulatorFault(chosen)) {
+        alert(`Código de teste (${chosen}) injetado no simulador. Toque em "Escanear Falhas da ECU".`);
+      } else {
+        alert('Disponível apenas no Modo Simulador (Ajustes > Método de Conexão).');
+      }
     });
 
     // Reset Trip
+    const resetLabel = this.btnResetTrip.innerHTML;
     this.btnResetTrip.addEventListener('click', () => {
       this.trip.reset();
       this.updateTripUI();
+      this.btnResetTrip.innerText = '✓ Viagem zerada!';
+      setTimeout(() => { this.btnResetTrip.innerHTML = resetLabel; }, 1500);
     });
 
     // Fuel settings
-    this.selectFuelType.addEventListener('change', (e) => {
-      this.trip.fuelType = e.target.value;
-    });
+    [this.selectFuelType, this.inputFuelPrice, this.inputEthanolMix, this.inputDisplacement, this.inputFuelCal]
+      .forEach(el => {
+        el.addEventListener('input', () => this.applyFuelSettings());
+        el.addEventListener('change', () => this.applyFuelSettings());
+      });
 
-    this.inputFuelPrice.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      if (!isNaN(val) && val > 0) {
-        this.trip.fuelPricePerLiter = val;
-      }
-    });
-
-    // Polling rate
+    // Polling rate (o loop sequencial lê o valor a cada PID)
     this.selectPollingRate.addEventListener('change', (e) => {
       this.client.pollingRateMs = parseInt(e.target.value, 10);
-      if (this.client.isPolling) {
-        this.client.startPolling();
-      }
     });
 
     // Terminal
@@ -204,7 +269,7 @@ class AutoPulseApp {
       this.appendTerminalLog(`> ${cmd}`, 'info');
 
       try {
-        const resp = await this.client.executeCommand(cmd, 3500);
+        const resp = await this.client.sendManual(cmd, 3500);
         this.appendTerminalLog(resp, 'success');
       } catch (err) {
         this.appendTerminalLog(`Erro: ${err.message}`, 'error');
@@ -245,12 +310,18 @@ class AutoPulseApp {
     // Telemetry updates
     this.client.onDataUpdate = (data) => {
       this.renderTelemetry(data);
-      this.trip.update(data.speed, data.maf, data.rpm);
+      this.trip.update(data.speed, data.maf, data.rpm, {
+        map: data.map,
+        intakeTemp: data.intakeTemp || undefined,
+        stft: data.stft,
+        ltft: data.ltft,
+        throttlePos: data.throttlePos
+      });
       this.updateTripUI();
     };
 
     // DTC received
-    this.client.onDTCsReceived = (codes, isPending) => {
+    this.client.onDTCsReceived = (codes) => {
       this.renderDTCs(codes);
     };
 
@@ -267,6 +338,13 @@ class AutoPulseApp {
         options.wifiTarget = document.getElementById('input-wifi-ip').value.trim();
         options.wsUrl = `ws://${window.location.hostname}:8765`;
         options.hostUrl = window.location.origin;
+      }
+      if (type === 'btclassic') {
+        if (!isBtClassicAvailable()) {
+          alert('Bluetooth Clássico só funciona no app Android (APK). No navegador use o Modo Simulador.');
+          return;
+        }
+        options.btAddress = this.selectBtDevice.value || '';
       }
       await this.client.connect(type, options);
       this.acquireWakeLock();
@@ -308,19 +386,22 @@ class AutoPulseApp {
       ['vehicleProfile', this.selectVehicleProfile],
       ['fuelType', this.selectFuelType],
       ['fuelPrice', this.inputFuelPrice],
-      ['pollingRate', this.selectPollingRate]
+      ['pollingRate', this.selectPollingRate],
+      ['btDevice', this.selectBtDevice],
+      ['ethanolMix', this.inputEthanolMix],
+      ['displacement', this.inputDisplacement],
+      ['fuelCal', this.inputFuelCal]
     ];
 
     fields.forEach(([key, el]) => {
       if (el && saved[key] !== undefined && saved[key] !== null) el.value = saved[key];
     });
+    if (saved.btDevice) this.selectBtDevice.dataset.saved = saved.btDevice;
+    if (this.selectConnType.value === 'btclassic' && isBtClassicAvailable()) this.refreshBtDevices(true);
 
     // Aplica os valores restaurados aos módulos
-    this.wifiSettings.style.display = this.selectConnType.value === 'wifi' ? 'block' : 'none';
     if (this.selectVehicleProfile) this.client.setProfile(this.selectVehicleProfile.value);
-    this.trip.fuelType = this.selectFuelType.value;
-    const price = parseFloat(this.inputFuelPrice.value);
-    if (!isNaN(price) && price > 0) this.trip.fuelPricePerLiter = price;
+    this.applyFuelSettings();
     this.client.pollingRateMs = parseInt(this.selectPollingRate.value, 10) || 200;
 
     // Salva a cada alteração
@@ -432,9 +513,10 @@ class AutoPulseApp {
       this.barVoltage.style.background = 'var(--accent-green)';
     }
 
-    // MAF (0 - 80 g/s)
-    this.valMaf.innerText = data.maf ? data.maf.toFixed(1) : '--';
-    const mafPct = Math.min(100, Math.max(0, (data.maf / 50) * 100));
+    // MAP (0 - 105 kPa) — Clio 2011; cai para MAF se a ECU tiver
+    const mapVal = data.map || 0;
+    this.valMaf.innerText = mapVal ? mapVal : (data.maf ? data.maf.toFixed(1) : '--');
+    const mafPct = Math.min(100, Math.max(0, (mapVal / 105) * 100));
     this.barMaf.style.width = `${mafPct}%`;
 
     // Fuel Tank
@@ -457,6 +539,8 @@ class AutoPulseApp {
     const summary = this.trip.getSummary();
     this.tripEcoScore.innerText = summary.ecoScore;
     this.tripInstantKml.innerText = summary.instantKmPerLiter;
+    if (this.tripInstantLh) this.tripInstantLh.innerText = summary.instantLitersPerHour;
+    if (this.tripAirSource) this.tripAirSource.innerText = `(${summary.airSource})`;
     this.tripAvgKml.innerText = summary.avgKmPerLiter;
     this.tripDistance.innerText = summary.distanceKm;
     this.tripDuration.innerText = summary.durationFormatted;
@@ -478,13 +562,15 @@ class AutoPulseApp {
     }
 
     let html = '';
-    codes.forEach(code => {
+    codes.forEach(item => {
+      const code = typeof item === 'string' ? item : item.code;
+      const pendingOnly = typeof item === 'object' && item.isPending && !item.isConfirmed;
       const info = lookupDTC(code);
       html += `
         <div class="dtc-card">
           <div class="dtc-header">
             <span class="dtc-code">${info.code}</span>
-            <span class="dtc-severity">${info.severity}</span>
+            <span class="dtc-severity">${pendingOnly ? 'Pendente' : info.severity}</span>
           </div>
           <div class="dtc-title">${info.title}</div>
           <div class="dtc-detail-row">
@@ -508,6 +594,8 @@ class AutoPulseApp {
   }
 
   registerPWA() {
+    // No APK o Service Worker só atrapalha (cache velho após atualizar)
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch((err) => {
