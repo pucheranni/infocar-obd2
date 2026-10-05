@@ -41,21 +41,27 @@ jobs:
           cp -r www/* android/app/src/main/assets/public/
 
       - name: Build Debug APK
+        working-directory: android
         run: |
-          cd android
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee gradle-build.log || (echo "=== GRADLE LOG ===" && cat gradle-build.log | tail -n 80 && exit 1)
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          ls -la app/build/outputs/apk/debug/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: AutoPulse-OBD2-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - name: Publish Direct APK Download Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.2.0-beta
           name: AutoPulse OBD2 (APK Direto para Android)
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
           body: |
             ## 🚗 AutoPulse OBD2 - APK para Android
             Download direto do instalador Android sem necessidade de login ou descompactação.
