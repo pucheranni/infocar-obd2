@@ -46,6 +46,8 @@ configurations.all {
     resolutionStrategy {
         force "androidx.core:core:$androidxCoreVersion"
         force "androidx.core:core-ktx:$androidxCoreVersion"
+        force "androidx.activity:activity:$androidxActivityVersion"
+        force "androidx.activity:activity-ktx:$androidxActivityVersion"
     }
 }
 
