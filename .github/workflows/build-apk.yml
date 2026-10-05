@@ -53,6 +53,11 @@ jobs:
           ./gradlew assembleDebug --stacktrace 2>&1 | tee /tmp/gradle.log
           ls -la app/build/outputs/apk/debug/
 
+      - name: Print Gradle Error to Annotations
+        if: always()
+        run: |
+          python3 -c "import os; p = '/tmp/gradle.log'; (print('::error title=Gradle Error::' + '%0A'.join(line.strip() for line in open(p, errors='ignore').readlines()[-50:])) if os.path.exists(p) else print('::error::gradle.log not found'))"
+
       - name: Dump Build Log to Summary
         if: always()
         run: |
