@@ -103,6 +103,7 @@ class AutoPulseApp {
     this.groupEthanolMix = document.getElementById('group-ethanol-mix');
     this.inputDisplacement = document.getElementById('input-displacement');
     this.inputFuelCal = document.getElementById('input-fuel-cal');
+    this.selectNavOffset = document.getElementById('select-nav-offset');
   }
 
   updateConnTypeUI() {
@@ -390,7 +391,8 @@ class AutoPulseApp {
       ['btDevice', this.selectBtDevice],
       ['ethanolMix', this.inputEthanolMix],
       ['displacement', this.inputDisplacement],
-      ['fuelCal', this.inputFuelCal]
+      ['fuelCal', this.inputFuelCal],
+      ['navOffset', this.selectNavOffset]
     ];
 
     fields.forEach(([key, el]) => {
@@ -403,6 +405,14 @@ class AutoPulseApp {
     if (this.selectVehicleProfile) this.client.setProfile(this.selectVehicleProfile.value);
     this.applyFuelSettings();
     this.client.pollingRateMs = parseInt(this.selectPollingRate.value, 10) || 200;
+
+    // Configura elevação da barra para evitar sobreposição no Galaxy S23 / Android
+    this.applyNavClearance(saved.navOffset);
+    if (this.selectNavOffset) {
+      this.selectNavOffset.addEventListener('change', () => {
+        this.applyNavClearance(this.selectNavOffset.value);
+      });
+    }
 
     // Salva a cada alteração
     const persist = () => {
@@ -421,6 +431,30 @@ class AutoPulseApp {
       el.addEventListener('change', persist);
       el.addEventListener('input', persist);
     });
+  }
+
+  // Ajusta dinamicamente a posição do dock de navegação para nunca sobrepor
+  // os botões de navegação físicos ou virtuais (Voltar / Início) do Android / Samsung S23
+  applyNavClearance(explicitOffset) {
+    if (explicitOffset !== undefined && explicitOffset !== null && explicitOffset !== '') {
+      document.documentElement.style.setProperty('--nav-bottom-offset', `${explicitOffset}px`);
+      if (this.selectNavOffset) this.selectNavOffset.value = String(explicitOffset);
+      return;
+    }
+
+    // Auto-detecção inicial para Android / Samsung S23:
+    // Se estiver em Android e a safe area inferior for baixa ou zero (típico de PWA/Capacitor),
+    // eleva em 56px para limpar a barra clássica de 3 botões do sistema.
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const testDiv = document.createElement('div');
+    testDiv.style.cssText = 'position:fixed;bottom:0;height:env(safe-area-inset-bottom, 0px);pointer-events:none;visibility:hidden;';
+    document.body.appendChild(testDiv);
+    const safeBottom = testDiv.offsetHeight || 0;
+    document.body.removeChild(testDiv);
+
+    const autoOffset = (isAndroid && safeBottom < 24) ? 56 : 14;
+    document.documentElement.style.setProperty('--nav-bottom-offset', `${autoOffset}px`);
+    if (this.selectNavOffset) this.selectNavOffset.value = String(autoOffset);
   }
 
   switchView(viewName) {
