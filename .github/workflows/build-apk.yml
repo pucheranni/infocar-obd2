@@ -33,7 +33,9 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor Android
-        run: npx @capacitor/cli sync android
+        run: |
+          chmod +x android/gradlew
+          npx @capacitor/cli sync android
 
       - name: Build Debug APK
         run: |
