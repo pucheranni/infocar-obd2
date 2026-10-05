@@ -37,6 +37,12 @@
           <span>CHECK ENGINE</span>
         </div>
 
+        <!-- Quick Refuel Modal Button -->
+        <button id="btn-open-fuel-modal" class="fuel-quick-btn" title="Registrar Abastecimento">
+          <span>⛽</span>
+          <span>Abastecer</span>
+        </button>
+
         <!-- HUD Quick Trigger -->
         <button id="btn-toggle-hud" class="hud-btn" title="Modo Projeção no Para-brisa (HUD)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -550,6 +556,72 @@
       </section>
 
     </main>
+
+    <!-- Modal de Abastecimento Rápido (One-Tap Refuel) -->
+    <div id="modal-fuel" class="modal-backdrop">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-icon">⛽</span>
+            <span class="modal-title">Registrar Abastecimento</span>
+          </div>
+          <button id="btn-close-fuel-modal" class="modal-close-btn" type="button">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="fuel-shortcut-group">
+            <span class="fuel-label">Volume Abastecido</span>
+            <div class="fuel-btn-grid">
+              <button type="button" class="fuel-preset-btn active" data-liters="40" data-full="true">Tanque Cheio (40L)</button>
+              <button type="button" class="fuel-preset-btn" data-liters="35" data-full="true">35 Litros</button>
+              <button type="button" class="fuel-preset-btn" data-liters="20" data-full="false">20 Litros</button>
+              <button type="button" class="fuel-preset-btn" data-liters="custom">Outro</button>
+            </div>
+            <div id="custom-liters-container" class="custom-liters-row" style="display: none; margin-top: 8px;">
+              <input type="number" id="fuel-input-liters" class="form-input" placeholder="Litros" step="0.1" min="1" max="60" value="40">
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem; margin-top: 6px; color: #a0aec0;">
+                <input type="checkbox" id="fuel-check-full" checked>
+                <span>Encheu até o clique da bomba (Tanque Cheio)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="fuel-shortcut-group" style="margin-top: 14px;">
+            <span class="fuel-label">Tipo de Combustível</span>
+            <div class="fuel-type-grid">
+              <button type="button" class="fuel-type-btn active" data-type="ethanol" data-price="3.50">
+                <span class="type-name">🌱 Etanol</span>
+                <span class="type-price">R$ 3,50 / L</span>
+              </button>
+              <button type="button" class="fuel-type-btn" data-type="gasoline" data-price="5.89">
+                <span class="type-name">⛽ Gasolina</span>
+                <span class="type-price">R$ 5,89 / L</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <label for="fuel-input-odometer">Odômetro no Painel (km)</label>
+            <input type="number" id="fuel-input-odometer" class="form-input" placeholder="ex: 132350" step="1">
+            <small style="color: var(--text-secondary); font-size: 0.72rem;">Necessário para auditoria de consumo e conciliação de km rodados.</small>
+          </div>
+
+          <div id="fuel-calc-preview" class="fuel-preview-box">
+            <div class="preview-row" style="display: flex; justify-content: space-between; font-size: 0.95rem; font-weight: 700;">
+              <span>Total Estimado:</span>
+              <strong id="fuel-preview-cost" style="color: var(--accent-cyan);">R$ 140,00</strong>
+            </div>
+            <div class="preview-note" style="margin-top: 4px; font-size: 0.75rem; color: #a0aec0;">
+              <span id="fuel-preview-cal-note">⚡ Malha Fechada: Tanque cheio > 15L recalibrará o consumo do carro.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 16px;">
+          <button id="btn-save-fuel" class="btn btn-primary" type="button" style="width: 100%; padding: 12px; font-size: 0.95rem; font-weight: 700;">Salvar e Calibrar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- HUD Mode Exit Button -->
     <button id="btn-exit-hud" class="hud-exit-btn">✕ Sair do HUD</button>

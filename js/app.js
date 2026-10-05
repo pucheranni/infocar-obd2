@@ -53,6 +53,25 @@ class AutoPulseApp {
     this.nfsRpmFiltered = document.getElementById('nfs-rpm-filtered');
     this.nfsHintIcon = document.getElementById('nfs-hint-icon');
     this.nfsHintText = document.getElementById('nfs-hint-text');
+
+    // Quick Refuel Modal Elements
+    this.modalFuel = document.getElementById('modal-fuel');
+    this.btnOpenFuelModal = document.getElementById('btn-open-fuel-modal');
+    this.btnCloseFuelModal = document.getElementById('btn-close-fuel-modal');
+    this.btnSaveFuel = document.getElementById('btn-save-fuel');
+    this.fuelPresetBtns = document.querySelectorAll('.fuel-preset-btn');
+    this.fuelTypeBtns = document.querySelectorAll('.fuel-type-btn');
+    this.customLitersContainer = document.getElementById('custom-liters-container');
+    this.fuelInputLiters = document.getElementById('fuel-input-liters');
+    this.fuelCheckFull = document.getElementById('fuel-check-full');
+    this.fuelInputOdometer = document.getElementById('fuel-input-odometer');
+    this.fuelPreviewCost = document.getElementById('fuel-preview-cost');
+    this.fuelPreviewCalNote = document.getElementById('fuel-preview-cal-note');
+
+    this.currentFuelLiters = 40;
+    this.currentIsFullTank = true;
+    this.currentFuelPrice = 3.50;
+    this.currentFuelTypeSelection = 'ethanol';
     this.rpmEmaFiltered = 0;
     this.currentNfsZone = 'idle';
 
@@ -307,6 +326,72 @@ class AutoPulseApp {
         this.terminalForm.dispatchEvent(new Event('submit'));
       });
     });
+
+    // Quick Refuel Modal Events
+    if (this.btnOpenFuelModal && this.modalFuel) {
+      this.btnOpenFuelModal.addEventListener('click', () => {
+        this.modalFuel.classList.add('active');
+        this.updateFuelModalPreview();
+      });
+
+      if (this.btnCloseFuelModal) {
+        this.btnCloseFuelModal.addEventListener('click', () => {
+          this.modalFuel.classList.remove('active');
+        });
+      }
+
+      this.modalFuel.addEventListener('click', (e) => {
+        if (e.target === this.modalFuel) this.modalFuel.classList.remove('active');
+      });
+
+      this.fuelPresetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.fuelPresetBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const liters = btn.dataset.liters;
+          if (liters === 'custom') {
+            if (this.customLitersContainer) this.customLitersContainer.style.display = 'block';
+            this.currentFuelLiters = parseFloat(this.fuelInputLiters.value) || 40;
+            this.currentIsFullTank = this.fuelCheckFull ? this.fuelCheckFull.checked : true;
+          } else {
+            if (this.customLitersContainer) this.customLitersContainer.style.display = 'none';
+            this.currentFuelLiters = parseFloat(liters);
+            this.currentIsFullTank = btn.dataset.full === 'true';
+          }
+          this.updateFuelModalPreview();
+        });
+      });
+
+      this.fuelTypeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.fuelTypeBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.currentFuelTypeSelection = btn.dataset.type;
+          this.currentFuelPrice = parseFloat(btn.dataset.price);
+          this.updateFuelModalPreview();
+        });
+      });
+
+      if (this.fuelInputLiters) {
+        this.fuelInputLiters.addEventListener('input', () => {
+          this.currentFuelLiters = parseFloat(this.fuelInputLiters.value) || 0;
+          this.updateFuelModalPreview();
+        });
+      }
+
+      if (this.fuelCheckFull) {
+        this.fuelCheckFull.addEventListener('change', () => {
+          this.currentIsFullTank = this.fuelCheckFull.checked;
+          this.updateFuelModalPreview();
+        });
+      }
+
+      if (this.btnSaveFuel) {
+        this.btnSaveFuel.addEventListener('click', () => {
+          this.handleSaveFueling();
+        });
+      }
+    }
   }
 
   setupOBDCallbacks() {
@@ -605,6 +690,59 @@ class AutoPulseApp {
     if (this.nfsModeBadge) this.nfsModeBadge.innerText = res.badgeText;
     if (this.nfsHintIcon) this.nfsHintIcon.innerText = res.hintIcon;
     if (this.nfsHintText) this.nfsHintText.innerText = res.hintText;
+  }
+
+  updateFuelModalPreview() {
+    if (!this.fuelPreviewCost) return;
+    const total = (this.currentFuelLiters * this.currentFuelPrice).toFixed(2);
+    this.fuelPreviewCost.innerText = `R$ ${total.replace('.', ',')}`;
+
+    if (this.fuelPreviewCalNote) {
+      if (this.currentIsFullTank && this.currentFuelLiters >= 15) {
+        this.fuelPreviewCalNote.innerText = '⚡ Malha Fechada: Tanque cheio > 15L recalibrará o consumo do carro.';
+        this.fuelPreviewCalNote.style.color = '#00FF88';
+      } else {
+        this.fuelPreviewCalNote.innerText = 'ℹ️ Abastecimento parcial: registrará custo sem alterar fator físico.';
+        this.fuelPreviewCalNote.style.color = '#a0aec0';
+      }
+    }
+  }
+
+  handleSaveFueling() {
+    const odo = this.fuelInputOdometer ? (parseFloat(this.fuelInputOdometer.value) || null) : null;
+    const record = this.trip.registerFueling({
+      liters: this.currentFuelLiters,
+      pricePerLiter: this.currentFuelPrice,
+      fuelType: this.currentFuelTypeSelection,
+      isFullTank: this.currentIsFullTank,
+      odometer: odo
+    });
+
+    try {
+      const history = JSON.parse(localStorage.getItem('autopulse.fuelings') || '[]');
+      history.unshift(record);
+      localStorage.setItem('autopulse.fuelings', JSON.stringify(history.slice(0, 50)));
+      localStorage.setItem('autopulse.settings', JSON.stringify({
+        ...JSON.parse(localStorage.getItem('autopulse.settings') || '{}'),
+        fuelPrice: this.currentFuelPrice,
+        fuelType: this.currentFuelTypeSelection,
+        fuelCal: this.trip.calibration
+      }));
+    } catch (e) {
+      console.warn('Erro ao salvar histórico de abastecimento:', e);
+    }
+
+    if (this.inputFuelPrice) this.inputFuelPrice.value = this.currentFuelPrice;
+    if (this.selectFuelType) this.selectFuelType.value = this.currentFuelTypeSelection;
+    if (this.inputFuelCal) this.inputFuelCal.value = this.trip.calibration.toFixed(2);
+
+    if (this.modalFuel) this.modalFuel.classList.remove('active');
+
+    let msg = `Abastecimento de ${record.liters}L (${record.fuelType === 'ethanol' ? 'Etanol' : 'Gasolina'}) salvo! Total: R$ ${record.totalCost.replace('.', ',')}.`;
+    if (record.wasCalibrated) {
+      msg += `\n🎯 Consumo recalibrado em malha fechada: Fator ajustado de ${record.oldCalibration} para ${record.newCalibration}.`;
+    }
+    alert(msg);
   }
 
   updateTripUI() {

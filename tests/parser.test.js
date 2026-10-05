@@ -228,3 +228,54 @@ test('Shift Coach: histerese +-75 RPM impede oscilação em fronteiras de rotaç
   assert.equal(coach.currentZone, 'normal');
 });
 
+// ---------------------------------------------------------------- Fueling & Calibration
+
+test('Trip: registerFueling com tanque cheio > 15L recalibra com amortecimento adaptativo', () => {
+  const trip = new TripComputer();
+  try {
+    trip.calibration = 1.0;
+    trip.fuelConsumedLiters = 36.0; // App estimou 36L consumidos
+    trip.distanceKm = 400.0;
+
+    // Usuário colocou 40L no tanque cheio (erro instantâneo de 40 / 36 = 1.111, ou seja, > 8% => peso 0.15)
+    const rec = trip.registerFueling({
+      liters: 40.0,
+      pricePerLiter: 3.50,
+      fuelType: 'ethanol',
+      isFullTank: true,
+      odometer: 132350
+    });
+
+    assert.equal(rec.wasCalibrated, true);
+    assert.equal(rec.totalCost, '140.00');
+    // Fator novo deve subir em direção a 1.111: (1 - 0.15)*1.0 + 0.15*1.111 = 0.85 + 0.1667 = 1.017
+    assert.ok(trip.calibration > 1.015 && trip.calibration < 1.025);
+    // Combustível do tanque deve ter sido zerado para o próximo ciclo
+    assert.equal(trip.fuelConsumedLiters, 0);
+  } finally {
+    clearInterval(trip.timer);
+  }
+});
+
+test('Trip: registerFueling parcial (< 15L ou isFullTank=false) não recalibra fator físico', () => {
+  const trip = new TripComputer();
+  try {
+    trip.calibration = 1.0;
+    trip.fuelConsumedLiters = 25.0;
+
+    // Abastecimento parcial de 20L (sem encher tanque)
+    const rec = trip.registerFueling({
+      liters: 20.0,
+      pricePerLiter: 5.89,
+      fuelType: 'gasoline',
+      isFullTank: false
+    });
+
+    assert.equal(rec.wasCalibrated, false);
+    assert.equal(trip.calibration, 1.0); // Fator permanece intacto
+  } finally {
+    clearInterval(trip.timer);
+  }
+});
+
+

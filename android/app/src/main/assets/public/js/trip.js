@@ -234,4 +234,56 @@ export class TripComputer {
       fuelType: this.fuelType
     };
   }
+
+  // Auditoria Financeira e Calibração em Malha Fechada recomendada pelo GPT-Sol
+  // Apenas abastecimentos com tanque cheio (isFullTank === true) e volume >= 15L recalibram o fator físico
+  registerFueling({ liters, pricePerLiter, fuelType = 'gasoline', isFullTank = true, odometer = null }) {
+    const timestamp = Date.now();
+    const appEstimatedLiters = this.fuelConsumedLiters;
+    const oldFactor = this.calibration;
+    let newFactor = oldFactor;
+    let calibrated = false;
+
+    if (isFullTank && liters >= 15 && appEstimatedLiters >= 5) {
+      const instantFactor = liters / appEstimatedLiters;
+      // Heurística adaptativa aprovada pelo GPT-Sol: erro > 8% => peso 0.15; erro <= 8% => peso 0.10
+      const errorRatio = Math.abs(instantFactor - 1);
+      const weight = errorRatio > 0.08 ? 0.15 : 0.10;
+      
+      const targetCalibration = oldFactor * instantFactor;
+      newFactor = (1 - weight) * oldFactor + weight * targetCalibration;
+      
+      // Limites de segurança físicos [0.70, 1.40]
+      this.calibration = Math.min(1.40, Math.max(0.70, Math.round(newFactor * 1000) / 1000));
+      calibrated = true;
+    }
+
+    if (pricePerLiter && pricePerLiter > 0) {
+      this.fuelPricePerLiter = pricePerLiter;
+    }
+    if (fuelType) {
+      this.fuelType = fuelType;
+    }
+
+    const record = {
+      id: `fuel_${timestamp}`,
+      date: timestamp,
+      liters: parseFloat(liters),
+      pricePerLiter: parseFloat(pricePerLiter || this.fuelPricePerLiter),
+      totalCost: (parseFloat(liters) * parseFloat(pricePerLiter || this.fuelPricePerLiter)).toFixed(2),
+      fuelType,
+      isFullTank,
+      odometer: odometer ? parseFloat(odometer) : null,
+      appEstimatedLiters: parseFloat(appEstimatedLiters.toFixed(2)),
+      oldCalibration: parseFloat(oldFactor.toFixed(3)),
+      newCalibration: parseFloat(this.calibration.toFixed(3)),
+      wasCalibrated: calibrated
+    };
+
+    // Reseta o consumo integrado para o novo ciclo de tanque
+    this.fuelConsumedLiters = 0;
+    this.distanceKm = 0;
+
+    return record;
+  }
 }
